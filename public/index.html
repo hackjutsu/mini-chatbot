@@ -97,6 +97,7 @@
         border-radius: 14px;
         background: rgba(241, 245, 249, 0.8);
         border: 1px solid transparent;
+        position: relative;
       }
 
       .session-item.is-active {
@@ -134,24 +135,72 @@
         color: #64748b;
       }
 
-      .session-rename {
+      .session-actions {
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .session-action-btn {
         border: none;
-        background: rgba(15, 23, 42, 0.08);
-        color: #0f172a;
-        border-radius: 8px;
-        padding: 0 12px;
-        height: 36px;
+        background: rgba(15, 23, 42, 0.04);
+        color: #475569;
+        width: 32px;
+        height: 32px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: background 0.2s ease;
-        flex-shrink: 0;
-        font-weight: 600;
+        font-size: 1.2rem;
+        transition: background 0.2s ease, color 0.2s ease;
       }
 
-      .session-rename:hover {
-        background: rgba(15, 23, 42, 0.15);
+      .session-action-btn:hover,
+      .session-action-btn[aria-expanded='true'] {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1e3a8a;
+      }
+
+      .session-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        min-width: 140px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.15);
+        display: none;
+        flex-direction: column;
+        padding: 6px;
+        z-index: 20;
+      }
+
+      .session-menu.is-open {
+        display: flex;
+      }
+
+      .session-menu button {
+        border: none;
+        background: transparent;
+        text-align: left;
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #0f172a;
+      }
+
+      .session-menu button:hover {
+        background: rgba(37, 99, 235, 0.08);
+      }
+
+      .session-menu button.is-danger {
+        color: #b91c1c;
+      }
+
+      .session-menu button.is-danger:hover {
+        background: rgba(239, 68, 68, 0.12);
       }
 
       .app-shell {
@@ -575,13 +624,26 @@
 
           selectButton.append(title, meta);
 
-        const renameButton = document.createElement('button');
-        renameButton.type = 'button';
-        renameButton.className = 'session-rename';
-        renameButton.textContent = 'Edit';
-        renameButton.setAttribute('aria-label', `Rename ${conversation.title || DEFAULT_TITLE}`);
+        const actions = document.createElement('div');
+        actions.className = 'session-actions';
 
-        item.append(selectButton, renameButton);
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.className = 'session-action-btn';
+        actionButton.setAttribute('aria-label', `Actions for ${conversation.title || DEFAULT_TITLE}`);
+        actionButton.setAttribute('aria-haspopup', 'true');
+        actionButton.setAttribute('aria-expanded', 'false');
+        actionButton.textContent = '⋯';
+
+        const menu = document.createElement('div');
+        menu.className = 'session-menu';
+        menu.innerHTML = `
+          <button type="button" class="session-menu-item" data-action="rename">Rename</button>
+          <button type="button" class="session-menu-item is-danger" data-action="delete">Delete</button>
+        `;
+
+        actions.append(actionButton, menu);
+        item.append(selectButton, actions);
         sessionListEl.append(item);
       });
     };
@@ -708,18 +770,84 @@
         }
       });
 
+      const deleteConversation = (conversationId) => {
+        const index = conversations.findIndex((entry) => entry.id === conversationId);
+        if (index === -1) return;
+
+        conversations.splice(index, 1);
+
+        if (!conversations.length) {
+          const replacement = createConversation();
+          conversations.push(replacement);
+          activeConversationId = replacement.id;
+        } else if (conversationId === activeConversationId) {
+          const fallback = conversations[index] || conversations[index - 1] || conversations[0];
+          activeConversationId = fallback.id;
+        }
+
+        persistState();
+        renderSessionList();
+        renderConversation();
+      };
+
+      const closeAllMenus = () => {
+        sessionListEl
+          .querySelectorAll('.session-menu.is-open')
+          .forEach((menu) => {
+            menu.classList.remove('is-open');
+            const trigger = menu.previousElementSibling;
+            if (trigger) {
+              trigger.setAttribute('aria-expanded', 'false');
+            }
+          });
+      };
+
       sessionListEl.addEventListener('click', (event) => {
         const sessionItem = event.target.closest('.session-item');
         if (!sessionItem) return;
         const sessionId = sessionItem.dataset.sessionId;
 
-        if (event.target.closest('.session-rename')) {
-          renameConversation(sessionId);
+        const actionTrigger = event.target.closest('.session-action-btn');
+        if (actionTrigger) {
+          const menu = actionTrigger.nextElementSibling;
+          if (!menu) return;
+          const isOpen = menu.classList.contains('is-open');
+          closeAllMenus();
+          if (!isOpen) {
+            menu.classList.add('is-open');
+            actionTrigger.setAttribute('aria-expanded', 'true');
+          }
+          return;
+        }
+
+        const menuItem = event.target.closest('.session-menu-item');
+        if (menuItem) {
+          const action = menuItem.dataset.action;
+          closeAllMenus();
+          if (action === 'rename') {
+            renameConversation(sessionId);
+          } else if (action === 'delete') {
+            const conversation = conversations.find((entry) => entry.id === sessionId);
+            if (!conversation) return;
+            const confirmed = window.confirm(
+              `Delete "${conversation.title || DEFAULT_TITLE}"?\nThis cannot be undone.`
+            );
+            if (confirmed) {
+              deleteConversation(sessionId);
+            }
+          }
           return;
         }
 
         if (event.target.closest('.session-select')) {
+          closeAllMenus();
           setActiveConversation(sessionId);
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.session-actions')) {
+          closeAllMenus();
         }
       });
 
