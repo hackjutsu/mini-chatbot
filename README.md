@@ -2,6 +2,9 @@
 
 A minimal web chat UI backed by a Node.js proxy that forwards conversation history to a locally running Ollama instance (e.g., `qwen2.5`).
 
+![](./screenshot.png)
+
+
 ## Prerequisites
 
 - [Node.js 18+](https://nodejs.org/)
