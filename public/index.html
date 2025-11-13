@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Chatbot</title>
+    <style>
+      :root {
+        color: #0f172a;
+        background-color: #e2e8f0;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px;
+        background: linear-gradient(135deg, #eef2ff, #e0f2fe);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+      }
+
+      .app-layout {
+        width: min(1140px, 100%);
+        height: min(820px, calc(100vh - 48px));
+        display: flex;
+        gap: 20px;
+      }
+
+      .session-panel {
+        width: 240px;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 24px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+        height: 100%;
+      }
+
+      .session-panel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .session-panel header h2 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .new-chat-btn {
+        border: none;
+        background: #0ea5e9;
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .new-chat-btn:hover {
+        background: #0284c7;
+        transform: translateY(-1px);
+      }
+
+      .session-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .session-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(241, 245, 249, 0.8);
+        border: 1px solid transparent;
+      }
+
+      .session-item.is-active {
+        border-color: #2563eb;
+        background: rgba(37, 99, 235, 0.08);
+      }
+
+      .session-select {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        text-align: left;
+        border: none;
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+        color: inherit;
+        padding: 0;
+      }
+
+      .session-title {
+        display: block;
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .session-meta {
+        font-size: 0.78rem;
+        color: #64748b;
+      }
+
+      .session-rename {
+        border: none;
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        border-radius: 8px;
+        padding: 0 12px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        flex-shrink: 0;
+        font-weight: 600;
+      }
+
+      .session-rename:hover {
+        background: rgba(15, 23, 42, 0.15);
+      }
+
+      .app-shell {
+        flex: 1;
+        background: #ffffff;
+        border-radius: 28px;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.18);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: 100%;
+        min-width: 0;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-cluster {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.4rem, 2vw, 2rem);
+        margin: 0;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #d1fae5;
+        color: #047857;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .status-pill::before {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+      }
+
+      .model-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.05);
+        color: #475569;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+
+      #conversation {
+        flex: 1;
+        min-height: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 22px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+      }
+
+      .message {
+        max-width: clamp(320px, 70%, 620px);
+        padding: 10px 14px;
+        border-radius: 16px;
+        line-height: 1.45;
+        font-size: 0.95rem;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      }
+
+      .message small {
+        opacity: 0.6;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+      }
+
+      .message .message-body p {
+        margin: 0 0 0.6em;
+      }
+
+      .message .message-body > :last-child {
+        margin-bottom: 0;
+      }
+
+      .message .message-body ul,
+      .message .message-body ol {
+        margin: 0 0 0.6em;
+        padding-left: 1.3rem;
+      }
+
+      .message .message-body code {
+        font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+        background: rgba(15, 23, 42, 0.08);
+        padding: 0.15em 0.35em;
+        border-radius: 6px;
+        font-size: 0.85rem;
+      }
+
+      .message .message-body pre {
+        margin: 0 0 0.6em;
+        padding: 12px;
+        border-radius: 12px;
+        background: #0f172a;
+        color: #e2e8f0;
+        overflow-x: auto;
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      .message .message-body pre code {
+        background: transparent;
+        padding: 0;
+      }
+
+      .message.user {
+        align-self: flex-end;
+        border-bottom-right-radius: 6px;
+        background: #3b82f6;
+        color: #ffffff;
+      }
+
+      .message.assistant {
+        align-self: flex-start;
+        border-bottom-left-radius: 6px;
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      form {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #f8fafc;
+        margin-top: auto;
+      }
+
+      textarea {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        resize: none;
+        min-height: 60px;
+        padding: 8px 6px;
+      }
+
+      textarea:focus {
+        outline: none;
+      }
+
+      .chat-submit {
+        border: none;
+        background: #2563eb;
+        color: white;
+        font: inherit;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 0 26px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      .chat-submit:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .chat-submit:not(:disabled):hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="session-panel">
+        <header>
+          <h2>Chats</h2>
+          <button type="button" class="new-chat-btn" id="new-chat-btn">+ New</button>
+        </header>
+        <ul id="session-list" class="session-list" aria-label="Conversation sessions"></ul>
+      </aside>
+
+      <main class="app-shell">
+        <header>
+          <h1>Mini Chatbot</h1>
+          <div class="status-cluster">
+            <span class="model-pill" id="model-pill">Model: —</span>
+            <span class="status-pill" id="status">Ready</span>
+          </div>
+        </header>
+
+        <section id="conversation" aria-live="polite"></section>
+
+        <form id="chat-form">
+          <textarea
+            id="prompt"
+            name="prompt"
+            placeholder="Type your message..."
+            autocomplete="off"
+            required
+          ></textarea>
+          <button type="submit" class="chat-submit">
+            <span id="button-label">Send</span>
+            <span aria-hidden="true">↗︎</span>
+          </button>
+        </form>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script>
+      const form = document.getElementById('chat-form');
+      const promptField = document.getElementById('prompt');
+      const conversationEl = document.getElementById('conversation');
+      const statusEl = document.getElementById('status');
+      const modelEl = document.getElementById('model-pill');
+      const buttonLabel = document.getElementById('button-label');
+      const submitButton = form.querySelector('.chat-submit');
+      const sessionListEl = document.getElementById('session-list');
+      const newChatBtn = document.getElementById('new-chat-btn');
+      const hasMarked = typeof window.marked !== 'undefined';
+
+      if (hasMarked) {
+        marked.setOptions({ breaks: true, gfm: true });
+      }
+
+      const STORAGE_KEY = 'miniChatbot:sessions';
+      const ACTIVE_KEY = 'miniChatbot:activeSession';
+      const DEFAULT_TITLE = 'New Chat';
+      const INTRO_MESSAGE = '👋 Hey! Ask me anything to get started.';
+      const ALLOWED_ATTRS = new Set(['href', 'target', 'rel', 'class', 'title', 'aria-label', 'role', 'lang']);
+
+      const sanitizeHTML = (html) => {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+
+        template.content.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((node) => node.remove());
+
+        template.content.querySelectorAll('*').forEach((node) => {
+          [...node.attributes].forEach((attr) => {
+            const name = attr.name.toLowerCase();
+            if (name === 'href') {
+              const value = attr.value.trim();
+              const isSafeLink =
+                value.startsWith('#') || value.startsWith('/') || /^https?:/i.test(value);
+              if (!isSafeLink) {
+                node.removeAttribute(name);
+                return;
+              }
+            } else if (name === 'src' || name.startsWith('on')) {
+              node.removeAttribute(name);
+              return;
+            } else if (!ALLOWED_ATTRS.has(name) && !name.startsWith('data-')) {
+              node.removeAttribute(name);
+            }
+          });
+
+          if (node.tagName === 'A') {
+            node.setAttribute('target', '_blank');
+            node.setAttribute('rel', 'noopener noreferrer');
+          }
+        });
+
+        return template.innerHTML;
+      };
+
+      const renderAssistantContent = (content = '') => {
+        if (!hasMarked) return content;
+        const raw = marked.parse(content);
+        return sanitizeHTML(raw);
+      };
+
+      const generateId = () =>
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      let conversations = [];
+      let activeConversationId = null;
+
+      const persistState = () => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+          if (activeConversationId) {
+            localStorage.setItem(ACTIVE_KEY, activeConversationId);
+          } else {
+            localStorage.removeItem(ACTIVE_KEY);
+          }
+        } catch (error) {
+          console.error('Failed to persist chats:', error);
+        }
+      };
+
+      const createConversation = (title = DEFAULT_TITLE) => ({
+        id: generateId(),
+        title: title || DEFAULT_TITLE,
+        messages: [],
+        createdAt: Date.now(),
+      });
+
+      const loadState = () => {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (Array.isArray(stored)) {
+            conversations = stored.map((conversation) => ({
+              id: conversation.id || generateId(),
+              title: conversation.title || DEFAULT_TITLE,
+              messages: Array.isArray(conversation.messages) ? conversation.messages : [],
+              createdAt: conversation.createdAt || Date.now(),
+            }));
+          }
+        } catch (error) {
+          conversations = [];
+        }
+
+        if (!conversations.length) {
+          conversations.push(createConversation());
+        }
+
+        const storedActive = localStorage.getItem(ACTIVE_KEY);
+        const hasStoredActive = conversations.some((conversation) => conversation.id === storedActive);
+        activeConversationId = hasStoredActive ? storedActive : conversations[0].id;
+      };
+
+      const getActiveConversation = () => conversations.find((conversation) => conversation.id === activeConversationId);
+
+      const setActiveConversation = (conversationId) => {
+        if (!conversationId || conversationId === activeConversationId) return;
+        const exists = conversations.some((conversation) => conversation.id === conversationId);
+        if (!exists) return;
+        activeConversationId = conversationId;
+        persistState();
+        renderSessionList();
+        renderConversation();
+        promptField.value = '';
+      };
+
+      const autoTitleFromMessage = (conversation, userMessage) => {
+        if (!userMessage) return;
+        const isDefaultTitle = !conversation.title || conversation.title === DEFAULT_TITLE;
+        if (!isDefaultTitle) return;
+        const trimmed = userMessage.replace(/\s+/g, ' ').trim();
+        if (!trimmed) return;
+        conversation.title = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+      };
+
+      const renderEmptyState = () => {
+        conversationEl.innerHTML = '';
+        appendMessage('assistant', INTRO_MESSAGE);
+      };
+
+      const renderConversation = () => {
+        const conversation = getActiveConversation();
+        if (!conversation) {
+          renderEmptyState();
+          return;
+        }
+
+        conversationEl.innerHTML = '';
+        if (!conversation.messages.length) {
+          renderEmptyState();
+          return;
+        }
+
+        conversation.messages.forEach(({ role, content }) => appendMessage(role, content));
+      };
+
+      const renderSessionList = () => {
+        sessionListEl.innerHTML = '';
+
+        conversations.forEach((conversation) => {
+          const item = document.createElement('li');
+          item.className = `session-item${conversation.id === activeConversationId ? ' is-active' : ''}`;
+          item.dataset.sessionId = conversation.id;
+
+          const selectButton = document.createElement('button');
+          selectButton.type = 'button';
+          selectButton.className = 'session-select';
+
+          const title = document.createElement('span');
+          title.className = 'session-title';
+          title.textContent = conversation.title || DEFAULT_TITLE;
+
+          const meta = document.createElement('span');
+          meta.className = 'session-meta';
+          meta.textContent = conversation.messages.length
+            ? `${conversation.messages.length} message${conversation.messages.length > 1 ? 's' : ''}`
+            : 'Empty';
+
+          selectButton.append(title, meta);
+
+        const renameButton = document.createElement('button');
+        renameButton.type = 'button';
+        renameButton.className = 'session-rename';
+        renameButton.textContent = 'Edit';
+        renameButton.setAttribute('aria-label', `Rename ${conversation.title || DEFAULT_TITLE}`);
+
+        item.append(selectButton, renameButton);
+        sessionListEl.append(item);
+      });
+    };
+
+      const renameConversation = (conversationId) => {
+        const conversation = conversations.find((entry) => entry.id === conversationId);
+        if (!conversation) return;
+        const nextTitle = window.prompt('Rename chat', conversation.title || DEFAULT_TITLE);
+        if (nextTitle === null) return;
+        const finalTitle = nextTitle.trim();
+        conversation.title = finalTitle || DEFAULT_TITLE;
+        persistState();
+        renderSessionList();
+      };
+
+      const startNewConversation = () => {
+        const conversation = createConversation();
+        conversations.unshift(conversation);
+        activeConversationId = conversation.id;
+        persistState();
+        renderSessionList();
+        renderConversation();
+        promptField.value = '';
+      };
+
+      const loadModelInfo = async () => {
+        if (!modelEl) return;
+        try {
+          const response = await fetch('/api/config');
+          if (!response.ok) throw new Error('Failed to load config');
+          const data = await response.json();
+          const label = data?.model ? `Model: ${data.model}` : 'Model: Unknown';
+          modelEl.textContent = label;
+        } catch (error) {
+          console.error('Unable to fetch model info:', error);
+          modelEl.textContent = 'Model: unavailable';
+        }
+      };
+
+      const appendMessage = (role, content) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message ${role}`;
+
+        const label = document.createElement('small');
+        label.textContent = role === 'user' ? 'You' : 'Assistant';
+
+        const text = document.createElement('div');
+        text.className = 'message-body';
+        if (role === 'assistant') {
+          text.innerHTML = renderAssistantContent(content);
+        } else {
+          text.textContent = content;
+        }
+
+        wrapper.append(label, text);
+        conversationEl.append(wrapper);
+        conversationEl.scrollTop = conversationEl.scrollHeight;
+      };
+
+      const setLoading = (isLoading) => {
+        buttonLabel.textContent = isLoading ? 'Sending...' : 'Send';
+        submitButton.disabled = isLoading;
+        statusEl.textContent = isLoading ? 'Thinking…' : 'Ready';
+      };
+
+      // Enter submits the form; Shift+Enter inserts a newline.
+      promptField.addEventListener('keydown', (event) => {
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey
+        ) {
+          event.preventDefault();
+          if (submitButton.disabled) return;
+          form.requestSubmit();
+        }
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const conversation = getActiveConversation();
+        if (!conversation) return;
+        const userMessage = promptField.value.trim();
+        if (!userMessage) return;
+
+        conversation.messages.push({ role: 'user', content: userMessage });
+        appendMessage('user', userMessage);
+        autoTitleFromMessage(conversation, userMessage);
+        persistState();
+        renderSessionList();
+        promptField.value = '';
+        setLoading(true);
+
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: conversation.messages }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Request failed');
+          }
+
+          const data = await response.json();
+          const reply = data?.reply ?? 'No response received.';
+
+          conversation.messages.push({ role: 'assistant', content: reply });
+          appendMessage('assistant', reply);
+          persistState();
+          renderSessionList();
+        } catch (error) {
+          console.error(error);
+          const fallback = 'Something went wrong. Please try again.';
+          appendMessage('assistant', fallback);
+          conversation.messages.push({ role: 'assistant', content: fallback });
+          persistState();
+          renderSessionList();
+        } finally {
+          setLoading(false);
+          promptField.focus();
+        }
+      });
+
+      sessionListEl.addEventListener('click', (event) => {
+        const sessionItem = event.target.closest('.session-item');
+        if (!sessionItem) return;
+        const sessionId = sessionItem.dataset.sessionId;
+
+        if (event.target.closest('.session-rename')) {
+          renameConversation(sessionId);
+          return;
+        }
+
+        if (event.target.closest('.session-select')) {
+          setActiveConversation(sessionId);
+        }
+      });
+
+      newChatBtn.addEventListener('click', startNewConversation);
+
+      loadState();
+      renderSessionList();
+      renderConversation();
+      loadModelInfo();
+    </script>
+  </body>
+</html>
