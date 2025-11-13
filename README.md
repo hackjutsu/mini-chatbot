@@ -41,10 +41,11 @@ A minimal web chat UI backed by a Node.js proxy that forwards conversation histo
 | `OLLAMA_CHAT_URL` | `http://localhost:11434/api/chat` | Endpoint for the local Ollama chat API. |
 | `OLLAMA_MODEL` | `qwen2.5` | Model identifier passed to Ollama. |
 
-## Request Flow
+## Features & Request Flow
 
-- The browser stores the conversation history locally and sends the entire `messages` array to `/api/chat` on each submit.
-- The Express backend forwards that payload to the Ollama API with `stream: false` to collect a single response chunk.
-- The UI renders both user and assistant turns in a simple two-column-style layout.
+- Conversations are stored locally per browser session. You can maintain multiple chat sessions via the sidebar, rename them, or delete them using the context menu.
+- The UI sends the selected session’s `messages` array to `/api/chat` on each submit; the backend forwards that payload to the Ollama API with `stream: false` to gather a single reply.
+- A `/api/config` helper returns the current `OLLAMA_MODEL`, which the front-end displays next to the status pill for easy reference.
+- Markdown responses from the assistant are rendered with light HTML sanitization so lists, code blocks, etc., display cleanly.
 
-Feel free to extend this (e.g., persistence, streaming updates, authentication) as needed.
+Feel free to extend this further (e.g., persistence server-side, streaming updates, authentication).
