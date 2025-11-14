@@ -3,6 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const https = require('https');
+const {
+  DEFAULT_SESSION_TITLE,
+  createSession,
+  createUser,
+  getMessagesForSession,
+  getSessionOwnedByUser,
+  getSessionsForUser,
+  getUserById,
+  getUserByUsername,
+  removeSession,
+  updateSessionTitle,
+  addMessage,
+} = require('./db');
 
 let UndiciAgent;
 try {
@@ -39,16 +52,178 @@ try {
   console.warn('Invalid OLLAMA_CHAT_URL provided, defaulting to HTTP keep-alive agent.', error);
 }
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
+
+const isValidUsername = (username = '') => USERNAME_PATTERN.test(username.trim());
+
+const formatSessionPayload = (session, overrides = {}) => {
+  if (!session) return null;
+  return {
+    id: session.id,
+    title: session.title || DEFAULT_SESSION_TITLE,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    messageCount:
+      typeof session.messageCount === 'number'
+        ? session.messageCount
+        : overrides.messageCount ?? 0,
+  };
+};
+
+const deriveTitleFromMessage = (content = '') => {
+  const trimmed = content.replace(/\s+/g, ' ').trim();
+  if (!trimmed) return null;
+  return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
+};
+
+const maybeAutoTitleSession = (session, userId, content) => {
+  if (!session) return;
+  const isDefault = !session.title || session.title === DEFAULT_SESSION_TITLE;
+  if (!isDefault) return;
+  const candidate = deriveTitleFromMessage(content);
+  if (!candidate) return;
+  if (updateSessionTitle(session.id, userId, candidate)) {
+    session.title = candidate;
+  }
+};
+
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body || {};
-
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: 'messages array is required' });
+app.post('/api/users', (req, res) => {
+  const username = req.body?.username;
+  if (typeof username !== 'string' || !isValidUsername(username)) {
+    return res.status(400).json({ error: 'Username must be 3-32 characters (letters, numbers, _ or -).' });
   }
+
+  const existing = getUserByUsername(username);
+  if (existing) {
+    return res.status(409).json({ error: 'Username already exists.' });
+  }
+
+  try {
+    const user = createUser(username.trim());
+    return res.status(201).json({ id: user.id, username: user.username });
+  } catch (error) {
+    console.error('Failed to create user:', error);
+    return res.status(500).json({ error: 'Unable to create user.' });
+  }
+});
+
+app.get('/api/users/:username', (req, res) => {
+  const username = req.params.username;
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ error: 'Invalid username.' });
+  }
+  const user = getUserByUsername(username);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  return res.json({ id: user.id, username: user.username });
+});
+
+app.get('/api/sessions', (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId query parameter is required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  const sessions = getSessionsForUser(userId).map((session) => ({
+    ...formatSessionPayload(session),
+  }));
+  return res.json({ sessions });
+});
+
+app.post('/api/sessions', (req, res) => {
+  const { userId, title } = req.body || {};
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  try {
+    const session = createSession(userId, title);
+    return res.status(201).json({ session: formatSessionPayload({ ...session }, { messageCount: 0 }) });
+  } catch (error) {
+    console.error('Failed to create session:', error);
+    return res.status(500).json({ error: 'Unable to create session.' });
+  }
+});
+
+app.patch('/api/sessions/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const { userId, title } = req.body || {};
+  if (!userId || typeof title !== 'string') {
+    return res.status(400).json({ error: 'userId and title are required.' });
+  }
+  const updated = updateSessionTitle(sessionId, userId, title);
+  if (!updated) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+  const session = getSessionOwnedByUser(sessionId, userId);
+  return res.json({ session: formatSessionPayload(session) });
+});
+
+app.delete('/api/sessions/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const userId = req.body?.userId || req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required.' });
+  }
+  const removed = removeSession(sessionId, userId);
+  if (!removed) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+  return res.status(204).end();
+});
+
+app.get('/api/sessions/:sessionId/messages', (req, res) => {
+  const { sessionId } = req.params;
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId query parameter is required.' });
+  }
+  const session = getSessionOwnedByUser(sessionId, userId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+  const messages = getMessagesForSession(sessionId).map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt,
+  }));
+  return res.json({ session: formatSessionPayload(session, { messageCount: messages.length }), messages });
+});
+
+app.post('/api/chat', async (req, res) => {
+  const { userId, sessionId, content } = req.body || {};
+
+  if (!userId || !sessionId || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'userId, sessionId, and content are required' });
+  }
+
+  const session = getSessionOwnedByUser(sessionId, userId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found for user.' });
+  }
+
+  const existingMessages = getMessagesForSession(sessionId).map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+
+  const userMessageContent = content.trim();
+  const outgoingMessages = [...existingMessages, { role: 'user', content: userMessageContent }];
+
+  addMessage(sessionId, 'user', userMessageContent);
+  maybeAutoTitleSession(session, userId, userMessageContent);
 
   const abortController = new AbortController();
   let clientClosedEarly = false;
@@ -77,7 +252,7 @@ app.post('/api/chat', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        messages,
+        messages: outgoingMessages,
         stream: true,
       }),
       signal: abortController.signal,
@@ -116,6 +291,8 @@ app.post('/api/chat', async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '';
 
+    let assistantContent = '';
+
     const writeChunk = (payload) => {
       try {
         res.write(`${JSON.stringify(payload)}\n`);
@@ -140,11 +317,16 @@ app.post('/api/chat', async (req, res) => {
           continue;
         }
 
+        let delta;
         if (typeof parsed?.message?.content === 'string' && parsed.message.content.length > 0) {
-          writeChunk({ type: 'delta', content: parsed.message.content });
+          delta = parsed.message.content;
         } else if (typeof parsed?.response === 'string' && parsed.response.length > 0) {
-          // Some models use `response` instead of `message.content` for streaming tokens.
-          writeChunk({ type: 'delta', content: parsed.response });
+          delta = parsed.response;
+        }
+
+        if (delta) {
+          assistantContent += delta;
+          writeChunk({ type: 'delta', content: delta });
         }
 
         if (parsed?.error) {
@@ -164,6 +346,9 @@ app.post('/api/chat', async (req, res) => {
     processBuffer();
 
     writeChunk({ type: 'done' });
+    if (assistantContent.trim()) {
+      addMessage(sessionId, 'assistant', assistantContent);
+    }
     res.end();
   } catch (error) {
     if (abortController.signal.aborted && clientClosedEarly) {
