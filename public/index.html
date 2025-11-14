@@ -354,6 +354,50 @@
         border: 1px solid rgba(15, 23, 42, 0.08);
       }
 
+      .message.assistant.is-thinking .message-body {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .thinking-indicator {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .thinking-indicator span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.4);
+        animation: thinkingPulse 1s ease-in-out infinite;
+      }
+
+      .thinking-indicator span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      .thinking-indicator span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes thinkingPulse {
+        0% {
+          transform: scale(0.6);
+          opacity: 0.4;
+        }
+        50% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.6);
+          opacity: 0.4;
+        }
+      }
+
       form {
         display: flex;
         gap: 12px;
@@ -818,17 +862,38 @@
         conversation.messages.push(assistantMessage);
         const assistantNode = appendMessage('assistant', '');
         const assistantBody = assistantNode?.querySelector('.message-body');
+        let thinkingIndicator = null;
+
+        const showThinkingIndicator = () => {
+          if (!assistantBody || thinkingIndicator) return;
+          thinkingIndicator = document.createElement('div');
+          thinkingIndicator.className = 'thinking-indicator';
+          thinkingIndicator.innerHTML = '<span></span><span></span><span></span>';
+          assistantBody.append(thinkingIndicator);
+          assistantNode?.classList.add('is-thinking');
+          scrollConversationToBottom();
+        };
+
+        const hideThinkingIndicator = () => {
+          assistantNode?.classList.remove('is-thinking');
+          if (thinkingIndicator) {
+            thinkingIndicator.remove();
+            thinkingIndicator = null;
+          }
+        };
 
         const renderAssistant = () => {
           if (!assistantBody) return;
           if (!assistantMessage.content) {
-            assistantBody.textContent = '';
-            scrollConversationToBottom();
+            showThinkingIndicator();
             return;
           }
+          hideThinkingIndicator();
           assistantBody.innerHTML = renderAssistantContent(assistantMessage.content);
           scrollConversationToBottom();
         };
+
+        renderAssistant();
 
         try {
           await consumeAssistantStream(payloadMessages, (delta) => {
@@ -839,10 +904,7 @@
 
           if (!assistantMessage.content.trim()) {
             assistantMessage.content = 'No response received.';
-            if (assistantBody) {
-              assistantBody.textContent = assistantMessage.content;
-              scrollConversationToBottom();
-            }
+            renderAssistant();
           } else {
             renderAssistant();
           }
@@ -850,10 +912,7 @@
           console.error(error);
           if (!assistantMessage.content.trim()) {
             assistantMessage.content = 'Something went wrong. Please try again.';
-            if (assistantBody) {
-              assistantBody.textContent = assistantMessage.content;
-              scrollConversationToBottom();
-            }
+            renderAssistant();
           } else {
             renderAssistant();
           }
