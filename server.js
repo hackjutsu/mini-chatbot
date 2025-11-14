@@ -16,6 +16,14 @@ const {
   updateSessionTitle,
   addMessage,
   setUserPreferredModel,
+  createCharacter,
+  getCharactersForUser,
+  getCharacterOwnedByUser,
+  getCharacterById,
+  updateCharacter,
+  removeCharacter,
+  attachCharacterToSession,
+  seedCharactersForUser,
 } = require('./db');
 
 let UndiciAgent;
@@ -65,8 +73,21 @@ const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
 
 const isValidUsername = (username = '') => USERNAME_PATTERN.test(username.trim());
 
+const formatCharacterPayload = (character) => {
+  if (!character) return null;
+  return {
+    id: character.id,
+    name: character.name,
+    prompt: character.prompt,
+    avatarUrl: character.avatarUrl || null,
+    createdAt: character.createdAt,
+    updatedAt: character.updatedAt,
+  };
+};
+
 const formatSessionPayload = (session, overrides = {}) => {
   if (!session) return null;
+  const characterOverride = overrides.character;
   return {
     id: session.id,
     title: session.title || DEFAULT_SESSION_TITLE,
@@ -76,6 +97,8 @@ const formatSessionPayload = (session, overrides = {}) => {
       typeof session.messageCount === 'number'
         ? session.messageCount
         : overrides.messageCount ?? 0,
+    characterId: session.characterId || null,
+    character: characterOverride || null,
   };
 };
 
@@ -199,6 +222,79 @@ app.get('/api/users/:username', (req, res) => {
   return res.json(formatUserPayload(user));
 });
 
+const ensureSeedCharacters = (userId) => {
+  const characters = getCharactersForUser(userId);
+  if (characters.length > 0) {
+    return characters;
+  }
+  return seedCharactersForUser(userId);
+};
+
+app.get('/api/characters', (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId query parameter is required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  const characters = ensureSeedCharacters(userId).map((character) => formatCharacterPayload(character));
+  return res.json({ characters });
+});
+
+app.post('/api/characters', (req, res) => {
+  const { userId, name, prompt, avatarUrl } = req.body || {};
+  if (!userId || typeof name !== 'string' || typeof prompt !== 'string') {
+    return res.status(400).json({ error: 'userId, name, and prompt are required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  try {
+    const character = createCharacter(userId, { name, prompt, avatarUrl });
+    return res.status(201).json({ character: formatCharacterPayload(character) });
+  } catch (error) {
+    console.error('Failed to create character:', error);
+    return res.status(500).json({ error: 'Unable to create character.' });
+  }
+});
+
+app.patch('/api/characters/:characterId', (req, res) => {
+  const { characterId } = req.params;
+  const { userId, name, prompt, avatarUrl } = req.body || {};
+  if (!userId || typeof name !== 'string' || typeof prompt !== 'string') {
+    return res.status(400).json({ error: 'userId, name, and prompt are required.' });
+  }
+  const existing = getCharacterOwnedByUser(characterId, userId);
+  if (!existing) {
+    return res.status(404).json({ error: 'Character not found.' });
+  }
+  const updated = updateCharacter(characterId, userId, { name, prompt, avatarUrl });
+  if (!updated) {
+    return res.status(500).json({ error: 'Unable to update character.' });
+  }
+  return res.json({ character: formatCharacterPayload(updated) });
+});
+
+app.delete('/api/characters/:characterId', (req, res) => {
+  const { characterId } = req.params;
+  const userId = req.body?.userId || req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required.' });
+  }
+  const existing = getCharacterOwnedByUser(characterId, userId);
+  if (!existing) {
+    return res.status(404).json({ error: 'Character not found.' });
+  }
+  const removed = removeCharacter(characterId, userId);
+  if (!removed) {
+    return res.status(500).json({ error: 'Unable to delete character.' });
+  }
+  return res.status(204).end();
+});
+
 app.get('/api/models', async (req, res) => {
   const userId = req.query.userId;
   if (!userId) {
@@ -257,14 +353,17 @@ app.get('/api/sessions', (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
-  const sessions = getSessionsForUser(userId).map((session) => ({
-    ...formatSessionPayload(session),
-  }));
+  const characters = ensureSeedCharacters(userId);
+  const characterMap = new Map(characters.map((character) => [character.id, formatCharacterPayload(character)]));
+  const sessions = getSessionsForUser(userId).map((session) => {
+    const character = session.characterId ? characterMap.get(session.characterId) || null : null;
+    return formatSessionPayload(session, { character });
+  });
   return res.json({ sessions });
 });
 
 app.post('/api/sessions', (req, res) => {
-  const { userId, title } = req.body || {};
+  const { userId, title, characterId } = req.body || {};
   if (!userId) {
     return res.status(400).json({ error: 'userId is required.' });
   }
@@ -272,9 +371,23 @@ app.post('/api/sessions', (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
+  let character = null;
+  if (characterId) {
+    character = getCharacterOwnedByUser(characterId, userId);
+    if (!character) {
+      return res.status(400).json({ error: 'Character not found for user.' });
+    }
+  }
   try {
-    const session = createSession(userId, title);
-    return res.status(201).json({ session: formatSessionPayload({ ...session }, { messageCount: 0 }) });
+    const session = createSession(userId, title, character ? character.id : null);
+    return res
+      .status(201)
+      .json({
+        session: formatSessionPayload(
+          { ...session, characterId: character ? character.id : null },
+          { messageCount: 0, character: formatCharacterPayload(character) }
+        ),
+      });
   } catch (error) {
     console.error('Failed to create session:', error);
     return res.status(500).json({ error: 'Unable to create session.' });
@@ -292,7 +405,12 @@ app.patch('/api/sessions/:sessionId', (req, res) => {
     return res.status(404).json({ error: 'Session not found.' });
   }
   const session = getSessionOwnedByUser(sessionId, userId);
-  return res.json({ session: formatSessionPayload(session) });
+  let character = null;
+  if (session.characterId) {
+    const found = getCharacterOwnedByUser(session.characterId, userId);
+    character = formatCharacterPayload(found);
+  }
+  return res.json({ session: formatSessionPayload(session, { character }) });
 });
 
 app.delete('/api/sessions/:sessionId', (req, res) => {
@@ -318,13 +436,21 @@ app.get('/api/sessions/:sessionId/messages', (req, res) => {
   if (!session) {
     return res.status(404).json({ error: 'Session not found.' });
   }
+  let character = null;
+  if (session.characterId) {
+    const found = getCharacterOwnedByUser(session.characterId, userId);
+    character = formatCharacterPayload(found);
+  }
   const messages = getMessagesForSession(sessionId).map((message) => ({
     id: message.id,
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
   }));
-  return res.json({ session: formatSessionPayload(session, { messageCount: messages.length }), messages });
+  return res.json({
+    session: formatSessionPayload(session, { messageCount: messages.length, character }),
+    messages,
+  });
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -344,13 +470,23 @@ app.post('/api/chat', async (req, res) => {
     return res.status(404).json({ error: 'Session not found for user.' });
   }
 
+  let characterPrompt = null;
+  if (session.characterId) {
+    const character = getCharacterOwnedByUser(session.characterId, userId);
+    characterPrompt = character?.prompt || null;
+  }
+
   const existingMessages = getMessagesForSession(sessionId).map((message) => ({
     role: message.role,
     content: message.content,
   }));
 
   const userMessageContent = content.trim();
-  const outgoingMessages = [...existingMessages, { role: 'user', content: userMessageContent }];
+  const outgoingMessages = [];
+  if (characterPrompt) {
+    outgoingMessages.push({ role: 'system', content: characterPrompt });
+  }
+  outgoingMessages.push(...existingMessages, { role: 'user', content: userMessageContent });
 
   addMessage(sessionId, 'user', userMessageContent);
   maybeAutoTitleSession(session, userId, userMessageContent);

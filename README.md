@@ -33,7 +33,7 @@ A minimal web chat UI backed by a Node.js proxy that streams requests to a local
 
 4. Visit [http://localhost:3000](http://localhost:3000). On first load you’ll be prompted to choose a username (a handle is stored locally). From there you can create/manage sessions and start chatting.
 
-> The SQLite database lives at `data/chat.sqlite` (ignored by git). Delete this file if you want a clean slate.
+> The SQLite database lives at `data/chat.sqlite` (ignored by git). Delete this file if you want a clean slate. Each user is automatically seeded with three sample characters (complete with avatars under `public/avatars/`) the first time they sign in.
 
 ## Environment Variables
 
@@ -47,6 +47,7 @@ A minimal web chat UI backed by a Node.js proxy that streams requests to a local
 
 - **Persistent chat history** – Every message is stored centrally (SQLite + better-sqlite3) under a user/session, so conversations survive refreshes and can resume on any device that knows the user handle.
 - **Multiple sessions per user** – Users can spin up as many chats as they want, rename them, and delete them; each session history is loaded on demand via REST endpoints.
+- **Character personas** – Each user can create reusable characters (name + background + avatar). Sessions can be associated with a specific persona (or none), and the persona prompt is injected automatically so the assistant replies in-character. Three starter characters are seeded for every new user.
 - **Streaming proxy to Ollama** – `/api/chat` rebuilds the prompt from stored history, streams NDJSON deltas from Ollama to the browser, and aborts upstream work if the client disconnects.
 - **Model picker** – The app queries Ollama for available models, remembers each user’s preferred model, and falls back gracefully if a model is removed; users can switch models from the header at any time.
 - **Handle-based identities** – Instead of full auth, users choose a memorable username. The backend enforces session ownership via `{ userId, sessionId }`, and clients can log out to switch identities.

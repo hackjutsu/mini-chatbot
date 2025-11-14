@@ -46,6 +46,200 @@
         height: 100%;
       }
 
+      .character-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 100;
+      }
+
+      .character-modal.is-open {
+        display: flex;
+      }
+
+      .character-modal__panel {
+        background: #ffffff;
+        border-radius: 20px;
+        max-width: min(840px, 96vw);
+        width: 100%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        padding: 24px;
+        gap: 16px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+      }
+
+      .character-modal__panel header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .character-modal__panel h2 {
+        margin: 0;
+        font-size: 1.3rem;
+      }
+
+      .character-modal__panel p {
+        margin: 4px 0 0;
+        color: #64748b;
+        font-size: 0.95rem;
+      }
+
+      .character-modal__close {
+        border: none;
+        background: rgba(15, 23, 42, 0.05);
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+
+      .character-card-container {
+        overflow-y: auto;
+        padding-right: 4px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .character-card {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        padding: 16px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .character-card__header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .character-card__avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: rgba(15, 23, 42, 0.08);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 1.1rem;
+        overflow: hidden;
+      }
+
+      .character-card__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .character-card__title {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .character-card__summary {
+        margin: 0;
+        color: #475569;
+        font-size: 0.9rem;
+      }
+
+      .character-card__prompt {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 0.9rem;
+        color: #1f2937;
+        border: 1px solid rgba(15, 23, 42, 0.05);
+      }
+
+      .character-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .character-card__actions button {
+        border: none;
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+
+      .character-card__actions button[data-action='start'] {
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      .character-card__actions button[data-action='edit'] {
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+      }
+
+      .character-card__actions button[data-action='delete'] {
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+      }
+
+      .character-modal__footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .character-modal__footer button {
+        cursor: pointer;
+      }
+
+      .character-modal__panel footer .pill {
+        background: rgba(15, 23, 42, 0.06);
+      }
+
+      .character-card.is-active {
+        border-color: #2563eb;
+        background: rgba(37, 99, 235, 0.05);
+      }
+
+      .session-character-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #475569;
+      }
+
+      .session-character-chip-avatar {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.7rem;
+      }
+
+      .session-character-chip-label {
+        font-size: 0.75rem;
+        color: #475569;
+      }
+
       .session-panel header {
         display: flex;
         align-items: center;
@@ -599,6 +793,7 @@
               </button>
               <div class="model-menu" id="model-menu"></div>
             </div>
+            <button type="button" class="pill model-pill" id="character-manager-btn">Characters</button>
             <span class="status-pill" id="status">Ready</span>
           </div>
         </header>
@@ -619,6 +814,23 @@
           </button>
         </form>
       </main>
+
+    <div id="character-modal" class="character-modal" hidden>
+      <div class="character-modal__panel" role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
+        <header>
+          <div>
+            <h2 id="character-modal-title">Characters</h2>
+            <p id="character-modal-desc">Create personas to steer how the assistant responds.</p>
+          </div>
+          <button type="button" class="character-modal__close" id="character-modal-close" aria-label="Close character manager">×</button>
+        </header>
+        <div id="character-card-container" class="character-card-container"></div>
+        <footer class="character-modal__footer">
+          <button type="button" class="new-chat-btn" id="character-create-btn">+ Create character</button>
+          <button type="button" class="pill model-pill" id="character-modal-cancel">Close</button>
+        </footer>
+      </div>
+    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -637,6 +849,14 @@
       const submitButton = form.querySelector('.chat-submit');
       const sessionListEl = document.getElementById('session-list');
       const newChatBtn = document.getElementById('new-chat-btn');
+      const characterModal = document.getElementById('character-modal');
+      const characterManagerBtn = document.getElementById('character-manager-btn');
+      const characterCardContainer = document.getElementById('character-card-container');
+      const characterModalTitle = document.getElementById('character-modal-title');
+      const characterModalDesc = document.getElementById('character-modal-desc');
+      const characterModalCloseBtn = document.getElementById('character-modal-close');
+      const characterModalCancelBtn = document.getElementById('character-modal-cancel');
+      const characterCreateBtn = document.getElementById('character-create-btn');
       const hasMarked = typeof window.marked !== 'undefined';
 
       if (hasMarked) {
@@ -646,6 +866,7 @@
       const STORAGE_KEYS = {
         user: 'miniChatbot:user',
         activeSession: 'miniChatbot:activeSession',
+        activeCharacter: 'miniChatbot:activeCharacter',
       };
       const DEFAULT_TITLE = 'New chat';
       const INTRO_MESSAGE = '👋 Hey! Ask me anything to get started.';
@@ -691,6 +912,34 @@
         if (!hasMarked) return content;
         const raw = marked.parse(content);
         return sanitizeHTML(raw);
+      };
+
+      const createCharacterBanner = (character) => {
+        const banner = document.createElement('div');
+        banner.className = 'character-banner';
+        if (character.avatarUrl) {
+          const img = document.createElement('img');
+          img.src = character.avatarUrl;
+          img.alt = character.name;
+          banner.append(img);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'character-avatar';
+          placeholder.style.width = '48px';
+          placeholder.style.height = '48px';
+          placeholder.style.borderRadius = '16px';
+          placeholder.textContent = character.name.slice(0, 1).toUpperCase();
+          banner.append(placeholder);
+        }
+        const textWrapper = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = character.name;
+        const description = document.createElement('p');
+        description.className = 'character-meta';
+        description.textContent = character.prompt;
+        textWrapper.append(title, description);
+        banner.append(textWrapper);
+        return banner;
       };
 
       const deriveTitleFromMessage = (content = '') => {
@@ -766,6 +1015,18 @@
           }
         } catch (error) {
           console.warn('Unable to persist active session:', error);
+        }
+      };
+
+      const persistActiveCharacter = () => {
+        try {
+          if (activeCharacterId) {
+            localStorage.setItem(STORAGE_KEYS.activeCharacter, activeCharacterId);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.activeCharacter);
+          }
+        } catch (error) {
+          console.warn('Unable to persist active character:', error);
         }
       };
 
@@ -864,6 +1125,252 @@
         renderModelLabel();
       };
 
+      const summarizePrompt = (text = '') => {
+        const trimmed = text.replace(/\s+/g, ' ').trim();
+        if (!trimmed) return '';
+        return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
+      };
+
+      const updateCharacterModalCopy = () => {
+        if (!characterModalTitle || !characterModalDesc) return;
+        if (characterModalMode === 'select') {
+          characterModalTitle.textContent = 'Choose a character';
+          characterModalDesc.textContent =
+            'Start a new chat with a persona or keep the default assistant voice.';
+        } else {
+          characterModalTitle.textContent = 'Your characters';
+          characterModalDesc.textContent =
+            'Create personas with custom backgrounds to steer responses.';
+        }
+      };
+
+      const renderCharacterCards = () => {
+        if (!characterCardContainer) return;
+        updateCharacterModalCopy();
+        characterCardContainer.innerHTML = '';
+        const entries = [
+          { id: null, name: 'No character', prompt: 'Use the default assistant persona', avatarUrl: null },
+          ...characters,
+        ];
+        entries.forEach((character) => {
+          const card = document.createElement('article');
+          card.className = `character-card${
+            (character.id || null) === (activeCharacterId || null) ? ' is-active' : ''
+          }`;
+          card.dataset.characterId = character.id || '';
+
+          const header = document.createElement('div');
+          header.className = 'character-card__header';
+          const avatar = document.createElement('div');
+          avatar.className = 'character-card__avatar';
+          if (character.avatarUrl) {
+            const img = document.createElement('img');
+            img.src = character.avatarUrl;
+            img.alt = character.name;
+            avatar.append(img);
+          } else {
+            avatar.textContent = character.name.slice(0, 1).toUpperCase();
+          }
+          const textWrapper = document.createElement('div');
+          const titleEl = document.createElement('h3');
+          titleEl.className = 'character-card__title';
+          titleEl.textContent = character.name;
+          const summaryEl = document.createElement('p');
+          summaryEl.className = 'character-card__summary';
+          summaryEl.textContent = summarizePrompt(character.prompt);
+          textWrapper.append(titleEl, summaryEl);
+          header.append(avatar, textWrapper);
+
+          const promptEl = document.createElement('div');
+          promptEl.className = 'character-card__prompt';
+          promptEl.textContent = character.prompt;
+
+          const actions = document.createElement('div');
+          actions.className = 'character-card__actions';
+
+          if (characterModalMode === 'select') {
+            const selectBtn = document.createElement('button');
+            selectBtn.type = 'button';
+            selectBtn.dataset.action = 'start';
+            selectBtn.dataset.characterId = character.id || '';
+            selectBtn.textContent = character.id ? 'Start chat' : 'Start without character';
+            actions.append(selectBtn);
+          } else if (character.id) {
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.dataset.action = 'edit';
+            editBtn.dataset.characterId = character.id;
+            editBtn.textContent = 'Edit';
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.dataset.action = 'delete';
+            deleteBtn.dataset.characterId = character.id;
+            deleteBtn.textContent = 'Delete';
+            actions.append(editBtn, deleteBtn);
+          }
+
+          card.append(header, promptEl, actions);
+          characterCardContainer.append(card);
+        });
+      };
+
+      const selectCharacterForNewSession = (characterId) => {
+        activeCharacterId = characterId || null;
+        persistActiveCharacter();
+        if (characterModal && !characterModal.hidden) {
+          renderCharacterCards();
+        }
+      };
+
+      const openCharacterModal = async (mode = 'manage') => {
+        if (!characterModal) return;
+        characterModalMode = mode;
+        updateCharacterModalCopy();
+        if (!characters.length) {
+          await loadCharacters();
+        }
+        renderCharacterCards();
+        characterModal.hidden = false;
+        characterModal.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+      };
+
+      const closeCharacterModal = () => {
+        if (!characterModal) return;
+        characterModal.hidden = true;
+        characterModal.classList.remove('is-open');
+        document.body.style.overflow = '';
+      };
+
+      const promptForCharacterDetails = (initial = {}) => {
+        const nameInput = window.prompt('Character name', initial.name || '');
+        if (nameInput === null) return null;
+        const name = nameInput.trim();
+        if (!name) {
+          alert('Name is required.');
+          return null;
+        }
+        const promptInput = window.prompt(
+          'Describe the character background/persona',
+          initial.prompt || ''
+        );
+        if (promptInput === null) return null;
+        const promptText = promptInput.trim();
+        if (!promptText) {
+          alert('Persona/background is required.');
+          return null;
+        }
+        const avatarInput = window.prompt(
+          'Avatar image URL (optional)',
+          initial.avatarUrl || ''
+        );
+        return {
+          name,
+          prompt: promptText,
+          avatarUrl: avatarInput ? avatarInput.trim() : null,
+        };
+      };
+
+      const handleCreateCharacter = async () => {
+        if (!userProfile) {
+          await ensureUserProfile();
+          if (!userProfile) return;
+        }
+        const details = promptForCharacterDetails({});
+        if (!details) return;
+        try {
+          const data = await requireJson('/api/characters', {
+            method: 'POST',
+            body: { userId: userProfile.userId, ...details },
+          });
+          const character = data.character;
+          characters.unshift(character);
+          selectCharacterForNewSession(character.id);
+          renderCharacterCards();
+        } catch (error) {
+          console.error('Unable to create character:', error);
+          alert(error.message || 'Failed to create character.');
+        }
+      };
+
+      const handleEditCharacter = async (characterId) => {
+        if (!userProfile || !characterId) return;
+        const existing = characters.find((character) => character.id === characterId);
+        if (!existing) return;
+        const details = promptForCharacterDetails(existing);
+        if (!details) return;
+        try {
+          const data = await requireJson(`/api/characters/${characterId}`, {
+            method: 'PATCH',
+            body: { userId: userProfile.userId, ...details },
+          });
+          const updated = data.character;
+          characters = characters.map((character) =>
+            character.id === characterId ? updated : character
+          );
+          conversations.forEach((conversation) => {
+            if (conversation.characterId === characterId) {
+              conversation.character = updated;
+            }
+          });
+          renderCharacterCards();
+          renderSessionList();
+          if (getActiveConversation()?.characterId === characterId) {
+            renderConversation();
+          }
+        } catch (error) {
+          console.error('Unable to update character:', error);
+          alert(error.message || 'Failed to update character.');
+        }
+      };
+
+      const handleDeleteCharacter = async (characterId) => {
+        if (!userProfile || !characterId) return;
+        const existing = characters.find((character) => character.id === characterId);
+        if (!existing) return;
+        const confirmed = window.confirm(
+          `Delete "${existing.name}"?\nSessions using this character will switch to default.`
+        );
+        if (!confirmed) return;
+        try {
+          await requireJson(`/api/characters/${characterId}`, {
+            method: 'DELETE',
+            body: { userId: userProfile.userId },
+          });
+          characters = characters.filter((character) => character.id !== characterId);
+          if (activeCharacterId === characterId) {
+            selectCharacterForNewSession(null);
+          }
+          renderCharacterCards();
+          conversations.forEach((conversation) => {
+            if (conversation.characterId === characterId) {
+              conversation.characterId = null;
+              conversation.character = null;
+            }
+          });
+          renderSessionList();
+          if (getActiveConversation()?.characterId === characterId) {
+            renderConversation();
+          }
+        } catch (error) {
+          console.error('Unable to delete character:', error);
+          alert(error.message || 'Failed to delete character.');
+        }
+      };
+
+      const loadCharacters = async () => {
+        if (!userProfile) return;
+        const params = new URLSearchParams({ userId: userProfile.userId });
+        const data = await requireJson(`/api/characters?${params.toString()}`);
+        characters = Array.isArray(data.characters) ? data.characters : [];
+        if (activeCharacterId && !characters.some((character) => character.id === activeCharacterId)) {
+          activeCharacterId = null;
+          persistActiveCharacter();
+        }
+        renderCharacterCards();
+        return characters;
+      };
+
       const closeUserMenu = () => {
         if (!userMenuEl) return;
         userMenuEl.classList.remove('is-open');
@@ -884,15 +1391,20 @@
       const logoutUser = () => {
         localStorage.removeItem(STORAGE_KEYS.user);
         localStorage.removeItem(STORAGE_KEYS.activeSession);
+        localStorage.removeItem(STORAGE_KEYS.activeCharacter);
         userProfile = null;
         conversations = [];
         activeConversationId = null;
         availableModels = [];
         selectedModel = null;
+        characters = [];
+        activeCharacterId = null;
         closeUserMenu();
         renderUserInfo();
         renderModelMenu();
         renderModelLabel();
+        renderCharacterCards();
+        closeCharacterModal();
         conversationEl.innerHTML =
           '<p class="session-meta">You have been logged out. Reloading…</p>';
         setTimeout(() => {
@@ -905,9 +1417,13 @@
       let activeConversationId = null;
       let availableModels = [];
       let selectedModel = null;
+      let characters = [];
+      let activeCharacterId = localStorage.getItem(STORAGE_KEYS.activeCharacter) || null;
+      let characterModalMode = 'manage';
 
       renderUserInfo();
       renderModelLabel();
+      renderCharacterCards();
 
       const getActiveConversation = () =>
         conversations.find((conversation) => conversation.id === activeConversationId);
@@ -973,13 +1489,15 @@
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         messageCount: session.messageCount ?? 0,
+        characterId: session.characterId || null,
+        character: session.character || null,
         messages: Array.isArray(session.messages) ? session.messages : null,
       });
 
-      const createRemoteSession = async (title = DEFAULT_TITLE) => {
+      const createRemoteSession = async (characterId = activeCharacterId, title = DEFAULT_TITLE) => {
         const data = await requireJson('/api/sessions', {
           method: 'POST',
-          body: { userId: userProfile.userId, title },
+          body: { userId: userProfile.userId, title, characterId },
         });
         return formatSession({ ...data.session, messages: [] });
       };
@@ -996,7 +1514,7 @@
         const data = await requireJson(`/api/sessions?userId=${encodeURIComponent(userProfile.userId)}`);
         conversations = (data.sessions || []).map((session) => formatSession(session));
         if (!conversations.length) {
-          const firstSession = await createRemoteSession();
+          const firstSession = await createRemoteSession(activeCharacterId);
           conversations = [firstSession];
         }
         sortConversations();
@@ -1025,6 +1543,13 @@
         conversation.messageCount = conversation.messages.length;
         if (data.session?.updatedAt) {
           conversation.updatedAt = data.session.updatedAt;
+        }
+        if (data.session?.characterId) {
+          conversation.characterId = data.session.characterId;
+          conversation.character = data.session.character || null;
+        } else {
+          conversation.characterId = null;
+          conversation.character = null;
         }
         return conversation.messages;
       };
@@ -1056,12 +1581,16 @@
           return;
         }
 
+        conversationEl.innerHTML = '';
+        if (conversation.character) {
+          conversationEl.append(createCharacterBanner(conversation.character));
+        }
+
         if (!conversation.messages.length) {
-          renderEmptyState();
+          appendMessage('assistant', INTRO_MESSAGE);
           return;
         }
 
-        conversationEl.innerHTML = '';
         conversation.messages.forEach(({ role, content }) => appendMessage(role, content));
       };
 
@@ -1088,7 +1617,31 @@
             ? `${messageCount} message${messageCount > 1 ? 's' : ''}`
             : 'Empty';
 
+          const characterChip = document.createElement('span');
+          characterChip.className = 'session-character-chip';
+          if (conversation.character?.avatarUrl) {
+            const img = document.createElement('img');
+            img.src = conversation.character.avatarUrl;
+            img.alt = conversation.character.name;
+            img.className = 'session-character-chip-avatar';
+            characterChip.append(img);
+          } else {
+            const placeholder = document.createElement('span');
+            placeholder.className = 'session-character-chip-avatar';
+            placeholder.textContent = conversation.character?.name
+              ? conversation.character.name.slice(0, 1).toUpperCase()
+              : '-';
+            characterChip.append(placeholder);
+          }
+          const nameLabel = document.createElement('span');
+          nameLabel.className = 'session-character-chip-label';
+          nameLabel.textContent = conversation.character?.name || 'No character';
+          characterChip.append(nameLabel);
+
           selectButton.append(title, meta);
+          if (conversation.character) {
+            selectButton.append(characterChip);
+          }
 
           const actions = document.createElement('div');
           actions.className = 'session-actions';
@@ -1443,27 +1996,83 @@
         }
       });
 
-      const startNewConversation = async () => {
+      const startNewConversationWithCharacter = async (characterId) => {
+        const selectedId = characterId || null;
         try {
           if (!userProfile) {
             await ensureUserProfile();
             if (!userProfile) return;
           }
-          const session = await createRemoteSession();
+          const session = await createRemoteSession(selectedId);
           conversations.unshift(session);
           activeConversationId = session.id;
           persistActiveSession();
+          selectCharacterForNewSession(selectedId);
           renderSessionList();
           renderConversation();
           promptField.value = '';
+          closeCharacterModal();
         } catch (error) {
           console.error('Unable to start new chat:', error);
           alert(error.message || 'Failed to start a new chat.');
         }
       };
 
-      newChatBtn.addEventListener('click', () => {
-        startNewConversation();
+      newChatBtn.addEventListener('click', async () => {
+        if (!userProfile) {
+          await ensureUserProfile();
+          if (!userProfile) return;
+        }
+        try {
+          await openCharacterModal('select');
+        } catch (error) {
+          console.error('Unable to load characters:', error);
+          alert(error.message || 'Failed to load characters. Please try again.');
+        }
+      });
+
+      characterManagerBtn?.addEventListener('click', async () => {
+        if (!userProfile) {
+          await ensureUserProfile();
+          if (!userProfile) return;
+        }
+        try {
+          await openCharacterModal('manage');
+        } catch (error) {
+          console.error('Unable to load characters:', error);
+          alert(error.message || 'Failed to load characters. Please try again.');
+        }
+      });
+
+      characterCardContainer?.addEventListener('click', async (event) => {
+        const actionBtn = event.target.closest('button[data-action]');
+        if (!actionBtn) return;
+        const { action } = actionBtn.dataset;
+        const characterId = actionBtn.dataset.characterId || null;
+        if (action === 'start') {
+          await startNewConversationWithCharacter(characterId);
+        } else if (action === 'edit') {
+          await handleEditCharacter(characterId);
+        } else if (action === 'delete') {
+          await handleDeleteCharacter(characterId);
+        }
+      });
+
+      characterModalCloseBtn?.addEventListener('click', closeCharacterModal);
+      characterModalCancelBtn?.addEventListener('click', closeCharacterModal);
+      characterModal?.addEventListener('click', (event) => {
+        if (event.target === characterModal) {
+          closeCharacterModal();
+        }
+      });
+      characterCreateBtn?.addEventListener('click', () => {
+        handleCreateCharacter();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && characterModal && !characterModal.hidden) {
+          closeCharacterModal();
+        }
       });
 
       userEl?.addEventListener('click', (event) => {
@@ -1513,6 +2122,7 @@
       const bootstrap = async () => {
         try {
           await ensureUserProfile();
+          await loadCharacters();
           await loadModels();
           await loadSessions();
         } catch (error) {
