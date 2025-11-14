@@ -133,7 +133,7 @@ body {
 
 .status-pill {
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid rgba(34, 197, 94, 0.4);
   background: rgba(34, 197, 94, 0.15);
   font-size: 0.85rem;
