@@ -15,6 +15,7 @@ const {
   removeSession,
   updateSessionTitle,
   addMessage,
+  setUserPreferredModel,
 } = require('./db');
 
 let UndiciAgent;
@@ -52,6 +53,14 @@ try {
   console.warn('Invalid OLLAMA_CHAT_URL provided, defaulting to HTTP keep-alive agent.', error);
 }
 
+const DEFAULT_OLLAMA_BASE = 'http://localhost:11434';
+const ollamaBaseOrigin = parsedOllamaUrl
+  ? `${parsedOllamaUrl.protocol}//${parsedOllamaUrl.host}`
+  : DEFAULT_OLLAMA_BASE;
+const OLLAMA_TAGS_URL = `${ollamaBaseOrigin}/api/tags`;
+const MODEL_CACHE_TTL = 15_000;
+let cachedModels = { timestamp: 0, list: null };
+
 const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
 
 const isValidUsername = (username = '') => USERNAME_PATTERN.test(username.trim());
@@ -67,6 +76,15 @@ const formatSessionPayload = (session, overrides = {}) => {
       typeof session.messageCount === 'number'
         ? session.messageCount
         : overrides.messageCount ?? 0,
+  };
+};
+
+const formatUserPayload = (user) => {
+  if (!user) return null;
+  return {
+    id: user.id,
+    username: user.username,
+    preferredModel: user.preferredModel || OLLAMA_MODEL,
   };
 };
 
@@ -87,6 +105,64 @@ const maybeAutoTitleSession = (session, userId, content) => {
   }
 };
 
+const getUpstreamTransportOptions = () => {
+  if (hasNativeFetch) {
+    return undiciDispatcher ? { dispatcher: undiciDispatcher } : {};
+  }
+  if (parsedOllamaUrl) {
+    return { agent: isOllamaHttps ? httpsKeepAliveAgent : httpKeepAliveAgent };
+  }
+  return {};
+};
+
+const fetchAvailableModels = async () => {
+  const now = Date.now();
+  if (cachedModels.list && now - cachedModels.timestamp < MODEL_CACHE_TTL) {
+    return cachedModels.list;
+  }
+  try {
+    const response = await fetchFn(OLLAMA_TAGS_URL, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      ...getUpstreamTransportOptions(),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Failed to fetch models: ${response.status} ${body}`);
+    }
+    const payload = await response.json();
+    const names = Array.isArray(payload?.models)
+      ? payload.models
+          .map((entry) => entry?.model || entry?.name)
+          .filter((value) => typeof value === 'string' && value.trim().length > 0)
+      : [];
+    const uniqueNames = Array.from(new Set(names));
+    const finalList = uniqueNames.length > 0 ? uniqueNames : [OLLAMA_MODEL];
+    cachedModels = { list: finalList, timestamp: Date.now() };
+    return finalList;
+  } catch (error) {
+    console.warn('Unable to load models from Ollama:', error);
+    if (cachedModels.list) {
+      return cachedModels.list;
+    }
+    return [OLLAMA_MODEL];
+  }
+};
+
+const resolveUserModel = (user, availableModels = []) => {
+  const normalizedList = Array.isArray(availableModels) ? availableModels : [];
+  if (!normalizedList.length) {
+    return user?.preferredModel || OLLAMA_MODEL;
+  }
+  if (user?.preferredModel && normalizedList.includes(user.preferredModel)) {
+    return user.preferredModel;
+  }
+  if (normalizedList.includes(OLLAMA_MODEL)) {
+    return OLLAMA_MODEL;
+  }
+  return normalizedList[0];
+};
+
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -103,8 +179,8 @@ app.post('/api/users', (req, res) => {
   }
 
   try {
-    const user = createUser(username.trim());
-    return res.status(201).json({ id: user.id, username: user.username });
+    const user = createUser(username.trim(), OLLAMA_MODEL);
+    return res.status(201).json(formatUserPayload(user));
   } catch (error) {
     console.error('Failed to create user:', error);
     return res.status(500).json({ error: 'Unable to create user.' });
@@ -120,7 +196,56 @@ app.get('/api/users/:username', (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
-  return res.json({ id: user.id, username: user.username });
+  return res.json(formatUserPayload(user));
+});
+
+app.get('/api/models', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId query parameter is required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  try {
+    const models = await fetchAvailableModels();
+    const selectedModel = resolveUserModel(user, models);
+    if (selectedModel !== user.preferredModel) {
+      setUserPreferredModel(userId, selectedModel);
+      user.preferredModel = selectedModel;
+    }
+    return res.json({
+      models,
+      selectedModel,
+    });
+  } catch (error) {
+    console.error('Failed to load models list:', error);
+    return res.status(502).json({ error: 'Unable to load model list from Ollama.' });
+  }
+});
+
+app.patch('/api/users/:userId/model', async (req, res) => {
+  const { userId } = req.params;
+  const { model } = req.body || {};
+  if (!model || typeof model !== 'string') {
+    return res.status(400).json({ error: 'model is required.' });
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  try {
+    const models = await fetchAvailableModels();
+    if (!models.includes(model)) {
+      return res.status(400).json({ error: 'Model is not available on the server.' });
+    }
+    setUserPreferredModel(userId, model);
+    return res.json({ model });
+  } catch (error) {
+    console.error('Failed to update user model:', error);
+    return res.status(502).json({ error: 'Unable to update model preference.' });
+  }
 });
 
 app.get('/api/sessions', (req, res) => {
@@ -209,6 +334,11 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'userId, sessionId, and content are required' });
   }
 
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
   const session = getSessionOwnedByUser(sessionId, userId);
   if (!session) {
     return res.status(404).json({ error: 'Session not found for user.' });
@@ -224,6 +354,8 @@ app.post('/api/chat', async (req, res) => {
 
   addMessage(sessionId, 'user', userMessageContent);
   maybeAutoTitleSession(session, userId, userMessageContent);
+
+  const targetModel = user.preferredModel || OLLAMA_MODEL;
 
   const abortController = new AbortController();
   let clientClosedEarly = false;
@@ -251,20 +383,14 @@ app.post('/api/chat', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
+        model: targetModel,
         messages: outgoingMessages,
         stream: true,
       }),
       signal: abortController.signal,
     };
 
-    if (hasNativeFetch) {
-      if (undiciDispatcher) {
-        fetchOptions.dispatcher = undiciDispatcher;
-      }
-    } else if (parsedOllamaUrl) {
-      fetchOptions.agent = isOllamaHttps ? httpsKeepAliveAgent : httpKeepAliveAgent;
-    }
+    Object.assign(fetchOptions, getUpstreamTransportOptions());
 
     const response = await fetchFn(OLLAMA_CHAT_URL, fetchOptions);
 

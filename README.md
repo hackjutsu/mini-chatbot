@@ -48,6 +48,7 @@ A minimal web chat UI backed by a Node.js proxy that streams requests to a local
 - **Persistent chat history** – Every message is stored centrally (SQLite + better-sqlite3) under a user/session, so conversations survive refreshes and can resume on any device that knows the user handle.
 - **Multiple sessions per user** – Users can spin up as many chats as they want, rename them, and delete them; each session history is loaded on demand via REST endpoints.
 - **Streaming proxy to Ollama** – `/api/chat` rebuilds the prompt from stored history, streams NDJSON deltas from Ollama to the browser, and aborts upstream work if the client disconnects.
+- **Model picker** – The app queries Ollama for available models, remembers each user’s preferred model, and falls back gracefully if a model is removed; users can switch models from the header at any time.
 - **Handle-based identities** – Instead of full auth, users choose a memorable username. The backend enforces session ownership via `{ userId, sessionId }`, and clients can log out to switch identities.
 
 Feel free to extend this further (e.g., auth, RAG, summarization, rate limiting).
