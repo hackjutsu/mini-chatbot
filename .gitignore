@@ -4,3 +4,6 @@ dist/
 tmp/
 *.log
 .env
+data/
+debug-*
+local_*/

@@ -232,9 +232,71 @@
         flex-shrink: 0;
       }
 
+      .user-menu-wrapper {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .user-pill {
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        cursor: pointer;
+        border: none;
+        outline: none;
+      }
+
+      .user-pill:hover,
+      .user-pill:focus-visible {
+        background: rgba(37, 99, 235, 0.15);
+      }
+
+      .user-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.15);
+        padding: 8px;
+        min-width: 160px;
+        display: none;
+        flex-direction: column;
+        z-index: 40;
+      }
+
+      .user-menu.is-open {
+        display: flex;
+      }
+
+      .user-menu button {
+        border: none;
+        background: transparent;
+        text-align: left;
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #0f172a;
+      }
+
+      .user-menu button:hover {
+        background: rgba(37, 99, 235, 0.08);
+      }
+
       h1 {
         font-size: clamp(1.4rem, 2vw, 2rem);
         margin: 0;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
       }
 
       .status-pill {
@@ -259,15 +321,8 @@
       }
 
       .model-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 999px;
         background: rgba(15, 23, 42, 0.05);
-        color: #475569;
-        font-size: 0.85rem;
-        font-weight: 500;
+        color: #1e293b;
       }
 
       #conversation {
@@ -463,7 +518,16 @@
         <header>
           <h1>Mini Chatbot</h1>
           <div class="status-cluster">
-            <span class="model-pill" id="model-pill">Model: —</span>
+            <div class="user-menu-wrapper">
+              <button type="button" class="pill user-pill" id="user-pill" aria-haspopup="true" aria-expanded="false">
+                <span id="user-pill-label">User: —</span>
+                <span aria-hidden="true">▾</span>
+              </button>
+              <div class="user-menu" id="user-menu">
+                <button type="button" data-action="logout">Log out</button>
+              </div>
+            </div>
+            <span class="pill model-pill" id="model-pill">Model: —</span>
             <span class="status-pill" id="status">Ready</span>
           </div>
         </header>
@@ -493,6 +557,9 @@
       const conversationEl = document.getElementById('conversation');
       const statusEl = document.getElementById('status');
       const modelEl = document.getElementById('model-pill');
+      const userEl = document.getElementById('user-pill');
+      const userLabelEl = document.getElementById('user-pill-label');
+      const userMenuEl = document.getElementById('user-menu');
       const buttonLabel = document.getElementById('button-label');
       const submitButton = form.querySelector('.chat-submit');
       const sessionListEl = document.getElementById('session-list');
@@ -503,25 +570,29 @@
         marked.setOptions({ breaks: true, gfm: true });
       }
 
-      const STORAGE_KEY = 'miniChatbot:sessions';
-      const ACTIVE_KEY = 'miniChatbot:activeSession';
-      const DEFAULT_TITLE = 'New Chat';
+      const STORAGE_KEYS = {
+        user: 'miniChatbot:user',
+        activeSession: 'miniChatbot:activeSession',
+      };
+      const DEFAULT_TITLE = 'New chat';
       const INTRO_MESSAGE = '👋 Hey! Ask me anything to get started.';
+      const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
       const ALLOWED_ATTRS = new Set(['href', 'target', 'rel', 'class', 'title', 'aria-label', 'role', 'lang']);
 
       const sanitizeHTML = (html) => {
         const template = document.createElement('template');
         template.innerHTML = html;
 
-        template.content.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((node) => node.remove());
+        template.content
+          .querySelectorAll('script, style, iframe, object, embed, link, meta')
+          .forEach((node) => node.remove());
 
         template.content.querySelectorAll('*').forEach((node) => {
           [...node.attributes].forEach((attr) => {
             const name = attr.name.toLowerCase();
             if (name === 'href') {
               const value = attr.value.trim();
-              const isSafeLink =
-                value.startsWith('#') || value.startsWith('/') || /^https?:/i.test(value);
+              const isSafeLink = value.startsWith('#') || value.startsWith('/') || /^https?:/i.test(value);
               if (!isSafeLink) {
                 node.removeAttribute(name);
                 return;
@@ -549,78 +620,241 @@
         return sanitizeHTML(raw);
       };
 
-      const generateId = () =>
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const deriveTitleFromMessage = (content = '') => {
+        const trimmed = content.replace(/\s+/g, ' ').trim();
+        if (!trimmed) return null;
+        return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
+      };
 
+      const request = async (url, options = {}) => {
+        const config = { ...options };
+        if (config.body && typeof config.body !== 'string') {
+          config.body = JSON.stringify(config.body);
+          config.headers = { 'Content-Type': 'application/json', ...(config.headers || {}) };
+        }
+        const response = await fetch(url, config);
+        const contentType = response.headers.get('content-type') || '';
+        let data = null;
+        if (contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          data = text ? { message: text } : null;
+        }
+        return { ok: response.ok, status: response.status, data };
+      };
+
+      const requireJson = async (url, options = {}) => {
+        const result = await request(url, options);
+        if (!result.ok) {
+          const message = result.data?.error || result.data?.message || `Request failed (${result.status})`;
+          throw new Error(message);
+        }
+        return result.data;
+      };
+
+      const persistSessionTitle = async (conversationId, title) => {
+        const data = await requireJson(`/api/sessions/${conversationId}`, {
+          method: 'PATCH',
+          body: { userId: userProfile.userId, title },
+        });
+        return {
+          title: data.session?.title || title,
+          updatedAt: data.session?.updatedAt || null,
+        };
+      };
+
+      const loadStoredProfile = () => {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.user));
+          if (stored?.userId && stored?.username) {
+            return stored;
+          }
+        } catch {
+          return null;
+        }
+        return null;
+      };
+
+      const persistUserProfile = (profile) => {
+        try {
+          localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile));
+        } catch (error) {
+          console.warn('Unable to persist user profile:', error);
+        }
+      };
+
+      const persistActiveSession = () => {
+        try {
+          if (activeConversationId) {
+            localStorage.setItem(STORAGE_KEYS.activeSession, activeConversationId);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.activeSession);
+          }
+        } catch (error) {
+          console.warn('Unable to persist active session:', error);
+        }
+      };
+
+      const renderUserInfo = () => {
+        if (!userLabelEl) return;
+        if (userProfile?.username) {
+          userLabelEl.textContent = `User: @${userProfile.username}`;
+          userEl?.setAttribute('aria-expanded', userMenuEl?.classList.contains('is-open') ? 'true' : 'false');
+        } else {
+          userLabelEl.textContent = 'User: —';
+          userEl?.setAttribute('aria-expanded', 'false');
+        }
+      };
+
+      const closeUserMenu = () => {
+        if (!userMenuEl) return;
+        userMenuEl.classList.remove('is-open');
+        userEl?.setAttribute('aria-expanded', 'false');
+      };
+
+      const toggleUserMenu = () => {
+        if (!userMenuEl) return;
+        const isOpen = userMenuEl.classList.contains('is-open');
+        if (isOpen) {
+          closeUserMenu();
+        } else {
+          userMenuEl.classList.add('is-open');
+          userEl?.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      const logoutUser = () => {
+        localStorage.removeItem(STORAGE_KEYS.user);
+        localStorage.removeItem(STORAGE_KEYS.activeSession);
+        userProfile = null;
+        conversations = [];
+        activeConversationId = null;
+        closeUserMenu();
+        renderUserInfo();
+        conversationEl.innerHTML =
+          '<p class="session-meta">You have been logged out. Reloading…</p>';
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      };
+
+      let userProfile = loadStoredProfile();
       let conversations = [];
       let activeConversationId = null;
 
-      const persistState = () => {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-          if (activeConversationId) {
-            localStorage.setItem(ACTIVE_KEY, activeConversationId);
-          } else {
-            localStorage.removeItem(ACTIVE_KEY);
-          }
-        } catch (error) {
-          console.error('Failed to persist chats:', error);
-        }
-      };
+      renderUserInfo();
 
-      const createConversation = (title = DEFAULT_TITLE) => ({
-        id: generateId(),
-        title: title || DEFAULT_TITLE,
-        messages: [],
-        createdAt: Date.now(),
-      });
-
-      const loadState = () => {
-        try {
-          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-          if (Array.isArray(stored)) {
-            conversations = stored.map((conversation) => ({
-              id: conversation.id || generateId(),
-              title: conversation.title || DEFAULT_TITLE,
-              messages: Array.isArray(conversation.messages) ? conversation.messages : [],
-              createdAt: conversation.createdAt || Date.now(),
-            }));
-          }
-        } catch (error) {
-          conversations = [];
-        }
-
-        if (!conversations.length) {
-          conversations.push(createConversation());
-        }
-
-        const storedActive = localStorage.getItem(ACTIVE_KEY);
-        const hasStoredActive = conversations.some((conversation) => conversation.id === storedActive);
-        activeConversationId = hasStoredActive ? storedActive : conversations[0].id;
-      };
-
-      const getActiveConversation = () => conversations.find((conversation) => conversation.id === activeConversationId);
+      const getActiveConversation = () =>
+        conversations.find((conversation) => conversation.id === activeConversationId);
 
       const setActiveConversation = (conversationId) => {
         if (!conversationId || conversationId === activeConversationId) return;
         const exists = conversations.some((conversation) => conversation.id === conversationId);
         if (!exists) return;
         activeConversationId = conversationId;
-        persistState();
+        persistActiveSession();
         renderSessionList();
         renderConversation();
         promptField.value = '';
       };
 
-      const autoTitleFromMessage = (conversation, userMessage) => {
-        if (!userMessage) return;
-        const isDefaultTitle = !conversation.title || conversation.title === DEFAULT_TITLE;
-        if (!isDefaultTitle) return;
-        const trimmed = userMessage.replace(/\s+/g, ' ').trim();
-        if (!trimmed) return;
-        conversation.title = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+      const ensureUserProfile = async () => {
+        if (userProfile) return userProfile;
+        while (true) {
+          const input = window.prompt('Choose a username (3-32 characters, letters/numbers/_/-):');
+          if (input === null) {
+            alert('A username is required to continue.');
+            continue;
+          }
+          const username = input.trim();
+          if (!USERNAME_PATTERN.test(username)) {
+            alert('Usernames must be 3-32 characters (letters, numbers, _ or -).');
+            continue;
+          }
+          try {
+            const lookup = await request(`/api/users/${encodeURIComponent(username)}`);
+          if (lookup.status === 404) {
+            const created = await requireJson('/api/users', {
+              method: 'POST',
+              body: { username },
+            });
+            userProfile = { userId: created.id, username: created.username };
+          } else if (!lookup.ok) {
+            throw new Error(lookup.data?.error || 'Unable to look up username.');
+          } else {
+            userProfile = { userId: lookup.data.id, username: lookup.data.username };
+          }
+          persistUserProfile(userProfile);
+          renderUserInfo();
+          return userProfile;
+        } catch (error) {
+          console.error('Username selection failed:', error);
+          alert(error.message || 'Unable to set username. Please try again.');
+        }
+        }
+      };
+
+      const formatSession = (session) => ({
+        id: session.id,
+        title: session.title || DEFAULT_TITLE,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        messageCount: session.messageCount ?? 0,
+        messages: Array.isArray(session.messages) ? session.messages : null,
+      });
+
+      const createRemoteSession = async (title = DEFAULT_TITLE) => {
+        const data = await requireJson('/api/sessions', {
+          method: 'POST',
+          body: { userId: userProfile.userId, title },
+        });
+        return formatSession({ ...data.session, messages: [] });
+      };
+
+      const sortConversations = () => {
+        conversations.sort((a, b) => {
+          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+          return bTime - aTime;
+        });
+      };
+
+      const loadSessions = async () => {
+        const data = await requireJson(`/api/sessions?userId=${encodeURIComponent(userProfile.userId)}`);
+        conversations = (data.sessions || []).map((session) => formatSession(session));
+        if (!conversations.length) {
+          const firstSession = await createRemoteSession();
+          conversations = [firstSession];
+        }
+        sortConversations();
+        const storedActive = localStorage.getItem(STORAGE_KEYS.activeSession);
+        if (storedActive && conversations.some((conversation) => conversation.id === storedActive)) {
+          activeConversationId = storedActive;
+        } else {
+          activeConversationId = conversations[0]?.id || null;
+        }
+        persistActiveSession();
+        renderSessionList();
+        renderConversation();
+      };
+
+      const loadConversationMessages = async (conversation) => {
+        if (!conversation || conversation.messages) return conversation?.messages;
+        if (!userProfile) {
+          await ensureUserProfile();
+          if (!userProfile) {
+            throw new Error('User profile missing.');
+          }
+        }
+        const params = new URLSearchParams({ userId: userProfile.userId });
+        const data = await requireJson(`/api/sessions/${conversation.id}/messages?${params.toString()}`);
+        conversation.messages = Array.isArray(data.messages) ? data.messages : [];
+        conversation.messageCount = conversation.messages.length;
+        if (data.session?.updatedAt) {
+          conversation.updatedAt = data.session.updatedAt;
+        }
+        return conversation.messages;
       };
 
       const renderEmptyState = () => {
@@ -635,19 +869,35 @@
           return;
         }
 
-        conversationEl.innerHTML = '';
+        if (!conversation.messages) {
+          conversationEl.innerHTML = '<p class="session-meta">Loading conversation…</p>';
+          loadConversationMessages(conversation)
+            .then(() => {
+              if (conversation.id === activeConversationId) {
+                renderConversation();
+              }
+            })
+            .catch((error) => {
+              console.error('Unable to load messages:', error);
+              conversationEl.innerHTML = '<p class="session-meta">Failed to load conversation history.</p>';
+            });
+          return;
+        }
+
         if (!conversation.messages.length) {
           renderEmptyState();
           return;
         }
 
+        conversationEl.innerHTML = '';
         conversation.messages.forEach(({ role, content }) => appendMessage(role, content));
       };
 
       const renderSessionList = () => {
+        sortConversations();
         sessionListEl.innerHTML = '';
-
         conversations.forEach((conversation) => {
+          const messageCount = conversation.messages?.length ?? conversation.messageCount ?? 0;
           const item = document.createElement('li');
           item.className = `session-item${conversation.id === activeConversationId ? ' is-active' : ''}`;
           item.dataset.sessionId = conversation.id;
@@ -662,55 +912,34 @@
 
           const meta = document.createElement('span');
           meta.className = 'session-meta';
-          meta.textContent = conversation.messages.length
-            ? `${conversation.messages.length} message${conversation.messages.length > 1 ? 's' : ''}`
+          meta.textContent = messageCount
+            ? `${messageCount} message${messageCount > 1 ? 's' : ''}`
             : 'Empty';
 
           selectButton.append(title, meta);
 
-        const actions = document.createElement('div');
-        actions.className = 'session-actions';
+          const actions = document.createElement('div');
+          actions.className = 'session-actions';
 
-        const actionButton = document.createElement('button');
-        actionButton.type = 'button';
-        actionButton.className = 'session-action-btn';
-        actionButton.setAttribute('aria-label', `Actions for ${conversation.title || DEFAULT_TITLE}`);
-        actionButton.setAttribute('aria-haspopup', 'true');
-        actionButton.setAttribute('aria-expanded', 'false');
-        actionButton.textContent = '⋯';
+          const actionButton = document.createElement('button');
+          actionButton.type = 'button';
+          actionButton.className = 'session-action-btn';
+          actionButton.setAttribute('aria-label', `Actions for ${conversation.title || DEFAULT_TITLE}`);
+          actionButton.setAttribute('aria-haspopup', 'true');
+          actionButton.setAttribute('aria-expanded', 'false');
+          actionButton.textContent = '⋯';
 
-        const menu = document.createElement('div');
-        menu.className = 'session-menu';
-        menu.innerHTML = `
-          <button type="button" class="session-menu-item" data-action="rename">Rename</button>
-          <button type="button" class="session-menu-item is-danger" data-action="delete">Delete</button>
-        `;
+          const menu = document.createElement('div');
+          menu.className = 'session-menu';
+          menu.innerHTML = `
+            <button type="button" class="session-menu-item" data-action="rename">Rename</button>
+            <button type="button" class="session-menu-item is-danger" data-action="delete">Delete</button>
+          `;
 
-        actions.append(actionButton, menu);
-        item.append(selectButton, actions);
-        sessionListEl.append(item);
-      });
-    };
-
-      const renameConversation = (conversationId) => {
-        const conversation = conversations.find((entry) => entry.id === conversationId);
-        if (!conversation) return;
-        const nextTitle = window.prompt('Rename chat', conversation.title || DEFAULT_TITLE);
-        if (nextTitle === null) return;
-        const finalTitle = nextTitle.trim();
-        conversation.title = finalTitle || DEFAULT_TITLE;
-        persistState();
-        renderSessionList();
-      };
-
-      const startNewConversation = () => {
-        const conversation = createConversation();
-        conversations.unshift(conversation);
-        activeConversationId = conversation.id;
-        persistState();
-        renderSessionList();
-        renderConversation();
-        promptField.value = '';
+          actions.append(actionButton, menu);
+          item.append(selectButton, actions);
+          sessionListEl.append(item);
+        });
       };
 
       const loadModelInfo = async () => {
@@ -759,11 +988,15 @@
         statusEl.textContent = isLoading ? 'Thinking…' : 'Ready';
       };
 
-      const consumeAssistantStream = async (payloadMessages, onDelta) => {
+      const consumeAssistantStream = async (sessionId, userMessage, onDelta) => {
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: payloadMessages }),
+          body: JSON.stringify({
+            userId: userProfile.userId,
+            sessionId,
+            content: userMessage,
+          }),
         });
 
         if (!response.ok) {
@@ -827,7 +1060,6 @@
         }
       };
 
-      // Enter submits the form; Shift+Enter inserts a newline.
       promptField.addEventListener('keydown', (event) => {
         if (
           event.key === 'Enter' &&
@@ -837,8 +1069,9 @@
           !event.metaKey
         ) {
           event.preventDefault();
-          if (submitButton.disabled) return;
-          form.requestSubmit();
+          if (!submitButton.disabled) {
+            form.requestSubmit();
+          }
         }
       });
 
@@ -849,15 +1082,26 @@
         const userMessage = promptField.value.trim();
         if (!userMessage) return;
 
+        await loadConversationMessages(conversation);
         conversation.messages.push({ role: 'user', content: userMessage });
+        conversation.messageCount = conversation.messages.length;
+        conversation.updatedAt = new Date().toISOString();
+        const shouldAutoTitle = !conversation.title || conversation.title === DEFAULT_TITLE;
+        if (shouldAutoTitle) {
+          const candidateTitle = deriveTitleFromMessage(userMessage);
+          if (candidateTitle) {
+            conversation.title = candidateTitle;
+            persistSessionTitle(conversation.id, candidateTitle).catch((error) => {
+              console.error('Unable to persist auto title:', error);
+            });
+          }
+        }
         appendMessage('user', userMessage);
-        autoTitleFromMessage(conversation, userMessage);
-        persistState();
         renderSessionList();
+        persistActiveSession();
         promptField.value = '';
         setLoading(true);
 
-        const payloadMessages = conversation.messages.slice();
         const assistantMessage = { role: 'assistant', content: '' };
         conversation.messages.push(assistantMessage);
         const assistantNode = appendMessage('assistant', '');
@@ -884,19 +1128,15 @@
 
         const renderAssistant = () => {
           if (!assistantBody) return;
-          if (!assistantMessage.content) {
-            showThinkingIndicator();
-            return;
-          }
           hideThinkingIndicator();
           assistantBody.innerHTML = renderAssistantContent(assistantMessage.content);
           scrollConversationToBottom();
         };
 
-        renderAssistant();
+        let thinkingTimer = setTimeout(showThinkingIndicator, 400);
 
         try {
-          await consumeAssistantStream(payloadMessages, (delta) => {
+          await consumeAssistantStream(conversation.id, userMessage, (delta) => {
             if (typeof delta !== 'string' || !delta) return;
             assistantMessage.content += delta;
             renderAssistant();
@@ -917,46 +1157,74 @@
             renderAssistant();
           }
         } finally {
-          persistState();
+          clearTimeout(thinkingTimer);
+          conversation.messageCount = conversation.messages.length;
+          conversation.updatedAt = new Date().toISOString();
           renderSessionList();
           setLoading(false);
           promptField.focus();
         }
       });
 
-      const deleteConversation = (conversationId) => {
+      const renameConversation = async (conversationId) => {
+        const conversation = conversations.find((entry) => entry.id === conversationId);
+        if (!conversation) return;
+        const nextTitle = window.prompt('Rename chat', conversation.title || DEFAULT_TITLE);
+        if (nextTitle === null) return;
+        const finalTitle = nextTitle.trim() || DEFAULT_TITLE;
+        if (finalTitle === conversation.title) return;
+        try {
+          const { title, updatedAt } = await persistSessionTitle(conversationId, finalTitle);
+          conversation.title = title;
+          if (updatedAt) {
+            conversation.updatedAt = updatedAt;
+          } else {
+            conversation.updatedAt = new Date().toISOString();
+          }
+          renderSessionList();
+        } catch (error) {
+          console.error('Unable to rename conversation:', error);
+          alert(error.message || 'Failed to rename chat.');
+        }
+      };
+
+      const deleteConversation = async (conversationId) => {
         const index = conversations.findIndex((entry) => entry.id === conversationId);
         if (index === -1) return;
-
-        conversations.splice(index, 1);
-
-        if (!conversations.length) {
-          const replacement = createConversation();
-          conversations.push(replacement);
-          activeConversationId = replacement.id;
-        } else if (conversationId === activeConversationId) {
-          const fallback = conversations[index] || conversations[index - 1] || conversations[0];
-          activeConversationId = fallback.id;
+        try {
+          await requireJson(`/api/sessions/${conversationId}`, {
+            method: 'DELETE',
+            body: { userId: userProfile.userId },
+          });
+          conversations.splice(index, 1);
+          if (!conversations.length) {
+            const replacement = await createRemoteSession();
+            conversations.unshift(replacement);
+            activeConversationId = replacement.id;
+          } else if (conversationId === activeConversationId) {
+            const fallback = conversations[index] || conversations[index - 1] || conversations[0];
+            activeConversationId = fallback?.id || null;
+          }
+          persistActiveSession();
+          renderSessionList();
+          renderConversation();
+        } catch (error) {
+          console.error('Unable to delete conversation:', error);
+          alert(error.message || 'Failed to delete chat.');
         }
-
-        persistState();
-        renderSessionList();
-        renderConversation();
       };
 
       const closeAllMenus = () => {
-        sessionListEl
-          .querySelectorAll('.session-menu.is-open')
-          .forEach((menu) => {
-            menu.classList.remove('is-open');
-            const trigger = menu.previousElementSibling;
-            if (trigger) {
-              trigger.setAttribute('aria-expanded', 'false');
-            }
-          });
+        sessionListEl.querySelectorAll('.session-menu.is-open').forEach((menu) => {
+          menu.classList.remove('is-open');
+          const trigger = menu.previousElementSibling;
+          if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+          }
+        });
       };
 
-      sessionListEl.addEventListener('click', (event) => {
+      sessionListEl.addEventListener('click', async (event) => {
         const sessionItem = event.target.closest('.session-item');
         if (!sessionItem) return;
         const sessionId = sessionItem.dataset.sessionId;
@@ -979,7 +1247,7 @@
           const action = menuItem.dataset.action;
           closeAllMenus();
           if (action === 'rename') {
-            renameConversation(sessionId);
+            await renameConversation(sessionId);
           } else if (action === 'delete') {
             const conversation = conversations.find((entry) => entry.id === sessionId);
             if (!conversation) return;
@@ -987,7 +1255,7 @@
               `Delete "${conversation.title || DEFAULT_TITLE}"?\nThis cannot be undone.`
             );
             if (confirmed) {
-              deleteConversation(sessionId);
+              await deleteConversation(sessionId);
             }
           }
           return;
@@ -1003,14 +1271,66 @@
         if (!event.target.closest('.session-actions')) {
           closeAllMenus();
         }
+        if (!event.target.closest('.user-pill') && !event.target.closest('#user-menu')) {
+          closeUserMenu();
+        }
       });
 
-      newChatBtn.addEventListener('click', startNewConversation);
+      const startNewConversation = async () => {
+        try {
+          if (!userProfile) {
+            await ensureUserProfile();
+            if (!userProfile) return;
+          }
+          const session = await createRemoteSession();
+          conversations.unshift(session);
+          activeConversationId = session.id;
+          persistActiveSession();
+          renderSessionList();
+          renderConversation();
+          promptField.value = '';
+        } catch (error) {
+          console.error('Unable to start new chat:', error);
+          alert(error.message || 'Failed to start a new chat.');
+        }
+      };
 
-      loadState();
-      renderSessionList();
-      renderConversation();
-      loadModelInfo();
+      newChatBtn.addEventListener('click', () => {
+        startNewConversation();
+      });
+
+      userEl?.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!userProfile) {
+          ensureUserProfile();
+          return;
+        }
+        toggleUserMenu();
+      });
+
+      userMenuEl?.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === 'logout') {
+          logoutUser();
+        }
+      });
+
+      const bootstrap = async () => {
+        try {
+          await ensureUserProfile();
+          await loadSessions();
+          await loadModelInfo();
+        } catch (error) {
+          console.error('Failed to initialize app:', error);
+          conversationEl.innerHTML =
+            '<p class="session-meta">Unable to load chats. Please refresh and try again.</p>';
+          statusEl.textContent = 'Offline';
+        }
+      };
+
+      bootstrap();
     </script>
   </body>
 </html>
