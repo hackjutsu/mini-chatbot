@@ -230,22 +230,19 @@
         justify-content: flex-end;
         margin-left: auto;
         flex-shrink: 0;
+      }
+
+      .user-menu-wrapper {
         position: relative;
+        display: inline-flex;
       }
 
       .user-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 999px;
         background: rgba(15, 23, 42, 0.08);
         color: #0f172a;
-        font-size: 0.9rem;
-        font-weight: 600;
         cursor: pointer;
         border: none;
         outline: none;
-        gap: 6px;
       }
 
       .user-pill:hover,
@@ -292,6 +289,16 @@
         margin: 0;
       }
 
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
       .status-pill {
         display: inline-flex;
         align-items: center;
@@ -314,15 +321,8 @@
       }
 
       .model-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 999px;
         background: rgba(15, 23, 42, 0.05);
-        color: #475569;
-        font-size: 0.85rem;
-        font-weight: 500;
+        color: #1e293b;
       }
 
       #conversation {
@@ -518,14 +518,16 @@
         <header>
           <h1>Mini Chatbot</h1>
           <div class="status-cluster">
-            <button type="button" class="user-pill" id="user-pill" aria-haspopup="true" aria-expanded="false">
-              <span id="user-pill-label">User: —</span>
-              <span aria-hidden="true">▾</span>
-            </button>
-            <div class="user-menu" id="user-menu">
-              <button type="button" data-action="logout">Log out</button>
+            <div class="user-menu-wrapper">
+              <button type="button" class="pill user-pill" id="user-pill" aria-haspopup="true" aria-expanded="false">
+                <span id="user-pill-label">User: —</span>
+                <span aria-hidden="true">▾</span>
+              </button>
+              <div class="user-menu" id="user-menu">
+                <button type="button" data-action="logout">Log out</button>
+              </div>
             </div>
-            <span class="model-pill" id="model-pill">Model: —</span>
+            <span class="pill model-pill" id="model-pill">Model: —</span>
             <span class="status-pill" id="status">Ready</span>
           </div>
         </header>
@@ -703,6 +705,38 @@
           userLabelEl.textContent = 'User: —';
           userEl?.setAttribute('aria-expanded', 'false');
         }
+      };
+
+      const closeUserMenu = () => {
+        if (!userMenuEl) return;
+        userMenuEl.classList.remove('is-open');
+        userEl?.setAttribute('aria-expanded', 'false');
+      };
+
+      const toggleUserMenu = () => {
+        if (!userMenuEl) return;
+        const isOpen = userMenuEl.classList.contains('is-open');
+        if (isOpen) {
+          closeUserMenu();
+        } else {
+          userMenuEl.classList.add('is-open');
+          userEl?.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      const logoutUser = () => {
+        localStorage.removeItem(STORAGE_KEYS.user);
+        localStorage.removeItem(STORAGE_KEYS.activeSession);
+        userProfile = null;
+        conversations = [];
+        activeConversationId = null;
+        closeUserMenu();
+        renderUserInfo();
+        conversationEl.innerHTML =
+          '<p class="session-meta">You have been logged out. Reloading…</p>';
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       };
 
       let userProfile = loadStoredProfile();
@@ -1300,34 +1334,3 @@
     </script>
   </body>
 </html>
-      const closeUserMenu = () => {
-        if (!userMenuEl) return;
-        userMenuEl.classList.remove('is-open');
-        userEl?.setAttribute('aria-expanded', 'false');
-      };
-
-      const toggleUserMenu = () => {
-        if (!userMenuEl) return;
-        const isOpen = userMenuEl.classList.contains('is-open');
-        if (isOpen) {
-          closeUserMenu();
-        } else {
-          userMenuEl.classList.add('is-open');
-          userEl?.setAttribute('aria-expanded', 'true');
-        }
-      };
-
-      const logoutUser = () => {
-        localStorage.removeItem(STORAGE_KEYS.user);
-        localStorage.removeItem(STORAGE_KEYS.activeSession);
-        userProfile = null;
-        conversations = [];
-        activeConversationId = null;
-        closeUserMenu();
-        renderUserInfo();
-        conversationEl.innerHTML =
-          '<p class="session-meta">You have been logged out. Reloading…</p>';
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      };
