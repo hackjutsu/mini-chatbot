@@ -1,5 +1,7 @@
 # Streaming Implementation Notes
 
+![](streaming-feature.gif)
+
 ## Overview
 - `/api/chat` now proxies Ollama’s streaming responses so the browser receives tokens as NDJSON chunks instead of waiting for a full JSON payload.
 - The chat UI consumes those chunks, updates the active assistant bubble word by word, and keeps client-side conversation history in sync with the incremental reply.
