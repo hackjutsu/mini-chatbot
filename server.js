@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -52,6 +53,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const OLLAMA_CHAT_URL = process.env.OLLAMA_CHAT_URL || 'http://localhost:11434/api/chat';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+const CLIENT_DIST_DIR = path.join(__dirname, 'client', 'dist');
+const CLIENT_INDEX_PATH = path.join(CLIENT_DIST_DIR, 'index.html');
+const hasClientBuild = fs.existsSync(CLIENT_INDEX_PATH);
+const staticRoots = [];
+if (hasClientBuild) {
+  staticRoots.push(CLIENT_DIST_DIR);
+} else {
+  console.warn('React client build not found. Run `npm --prefix client install` and `npm --prefix client run build` to generate the frontend bundle.');
+}
+const legacyPublicDir = path.join(__dirname, 'public');
+if (fs.existsSync(legacyPublicDir)) {
+  staticRoots.push(legacyPublicDir);
+}
 let parsedOllamaUrl;
 let isOllamaHttps = false;
 try {
@@ -188,7 +202,9 @@ const resolveUserModel = (user, availableModels = []) => {
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+staticRoots.forEach((dir) => {
+  app.use(express.static(dir));
+});
 
 app.post('/api/users', (req, res) => {
   const username = req.body?.username;
@@ -637,7 +653,14 @@ app.get('/api/config', (req, res) => {
 });
 
 app.get(/^\/(?!api).*/, (req, res) => {
-  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (!hasClientBuild) {
+    return res
+      .status(503)
+      .send(
+        'Client build missing. Run `npm install` and `npm run build` inside the client/ directory before starting the server.'
+      );
+  }
+  return res.sendFile(CLIENT_INDEX_PATH);
 });
 
 app.listen(PORT, () => {
