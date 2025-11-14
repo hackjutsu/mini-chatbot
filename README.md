@@ -1,6 +1,6 @@
 # Mini Chatbot
 
-A minimal web chat UI backed by a Node.js proxy that forwards conversation history to a locally running Ollama instance (e.g., `qwen2.5`).
+A minimal web chat UI backed by a Node.js proxy that streams requests to a locally running Ollama instance (e.g., `qwen2.5`) while persisting users, sessions, and full conversation history in SQLite.
 
 ![](./screenshot.png)
 
@@ -31,7 +31,9 @@ A minimal web chat UI backed by a Node.js proxy that forwards conversation histo
    npm start
    ```
 
-4. Visit [http://localhost:3000](http://localhost:3000) and begin chatting.
+4. Visit [http://localhost:3000](http://localhost:3000). On first load you’ll be prompted to choose a username (a handle is stored locally). From there you can create/manage sessions and start chatting.
+
+> The SQLite database lives at `data/chat.sqlite` (ignored by git). Delete this file if you want a clean slate.
 
 ## Environment Variables
 
@@ -41,11 +43,11 @@ A minimal web chat UI backed by a Node.js proxy that forwards conversation histo
 | `OLLAMA_CHAT_URL` | `http://localhost:11434/api/chat` | Endpoint for the local Ollama chat API. |
 | `OLLAMA_MODEL` | `qwen2.5` | Model identifier passed to Ollama. |
 
-## Features & Request Flow
+## Features & Flow
 
-- Conversations are stored locally per browser session. You can maintain multiple chat sessions via the sidebar, rename them, or delete them using the context menu.
-- The UI sends the selected session’s `messages` array to `/api/chat` on each submit; the backend forwards that payload to the Ollama API with `stream: false` to gather a single reply.
-- A `/api/config` helper returns the current `OLLAMA_MODEL`, which the front-end displays next to the status pill for easy reference.
-- Markdown responses from the assistant are rendered with light HTML sanitization so lists, code blocks, etc., display cleanly.
+- **Persistent chat history** – Every message is stored centrally (SQLite + better-sqlite3) under a user/session, so conversations survive refreshes and can resume on any device that knows the user handle.
+- **Multiple sessions per user** – Users can spin up as many chats as they want, rename them, and delete them; each session history is loaded on demand via REST endpoints.
+- **Streaming proxy to Ollama** – `/api/chat` rebuilds the prompt from stored history, streams NDJSON deltas from Ollama to the browser, and aborts upstream work if the client disconnects.
+- **Handle-based identities** – Instead of full auth, users choose a memorable username. The backend enforces session ownership via `{ userId, sessionId }`, and clients can log out to switch identities.
 
-Feel free to extend this further (e.g., persistence server-side, streaming updates, authentication).
+Feel free to extend this further (e.g., auth, RAG, summarization, rate limiting).
