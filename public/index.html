@@ -230,6 +230,61 @@
         justify-content: flex-end;
         margin-left: auto;
         flex-shrink: 0;
+        position: relative;
+      }
+
+      .user-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        outline: none;
+        gap: 6px;
+      }
+
+      .user-pill:hover,
+      .user-pill:focus-visible {
+        background: rgba(37, 99, 235, 0.15);
+      }
+
+      .user-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.15);
+        padding: 8px;
+        min-width: 160px;
+        display: none;
+        flex-direction: column;
+        z-index: 40;
+      }
+
+      .user-menu.is-open {
+        display: flex;
+      }
+
+      .user-menu button {
+        border: none;
+        background: transparent;
+        text-align: left;
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #0f172a;
+      }
+
+      .user-menu button:hover {
+        background: rgba(37, 99, 235, 0.08);
       }
 
       h1 {
@@ -463,6 +518,13 @@
         <header>
           <h1>Mini Chatbot</h1>
           <div class="status-cluster">
+            <button type="button" class="user-pill" id="user-pill" aria-haspopup="true" aria-expanded="false">
+              <span id="user-pill-label">User: —</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            <div class="user-menu" id="user-menu">
+              <button type="button" data-action="logout">Log out</button>
+            </div>
             <span class="model-pill" id="model-pill">Model: —</span>
             <span class="status-pill" id="status">Ready</span>
           </div>
@@ -493,6 +555,9 @@
       const conversationEl = document.getElementById('conversation');
       const statusEl = document.getElementById('status');
       const modelEl = document.getElementById('model-pill');
+      const userEl = document.getElementById('user-pill');
+      const userLabelEl = document.getElementById('user-pill-label');
+      const userMenuEl = document.getElementById('user-menu');
       const buttonLabel = document.getElementById('button-label');
       const submitButton = form.querySelector('.chat-submit');
       const sessionListEl = document.getElementById('session-list');
@@ -629,9 +694,22 @@
         }
       };
 
+      const renderUserInfo = () => {
+        if (!userLabelEl) return;
+        if (userProfile?.username) {
+          userLabelEl.textContent = `User: @${userProfile.username}`;
+          userEl?.setAttribute('aria-expanded', userMenuEl?.classList.contains('is-open') ? 'true' : 'false');
+        } else {
+          userLabelEl.textContent = 'User: —';
+          userEl?.setAttribute('aria-expanded', 'false');
+        }
+      };
+
       let userProfile = loadStoredProfile();
       let conversations = [];
       let activeConversationId = null;
+
+      renderUserInfo();
 
       const getActiveConversation = () =>
         conversations.find((conversation) => conversation.id === activeConversationId);
@@ -662,23 +740,24 @@
           }
           try {
             const lookup = await request(`/api/users/${encodeURIComponent(username)}`);
-            if (lookup.status === 404) {
-              const created = await requireJson('/api/users', {
-                method: 'POST',
-                body: { username },
-              });
-              userProfile = { userId: created.id, username: created.username };
-            } else if (!lookup.ok) {
-              throw new Error(lookup.data?.error || 'Unable to look up username.');
-            } else {
-              userProfile = { userId: lookup.data.id, username: lookup.data.username };
-            }
-            persistUserProfile(userProfile);
-            return userProfile;
-          } catch (error) {
-            console.error('Username selection failed:', error);
-            alert(error.message || 'Unable to set username. Please try again.');
+          if (lookup.status === 404) {
+            const created = await requireJson('/api/users', {
+              method: 'POST',
+              body: { username },
+            });
+            userProfile = { userId: created.id, username: created.username };
+          } else if (!lookup.ok) {
+            throw new Error(lookup.data?.error || 'Unable to look up username.');
+          } else {
+            userProfile = { userId: lookup.data.id, username: lookup.data.username };
           }
+          persistUserProfile(userProfile);
+          renderUserInfo();
+          return userProfile;
+        } catch (error) {
+          console.error('Username selection failed:', error);
+          alert(error.message || 'Unable to set username. Please try again.');
+        }
         }
       };
 
@@ -728,6 +807,12 @@
 
       const loadConversationMessages = async (conversation) => {
         if (!conversation || conversation.messages) return conversation?.messages;
+        if (!userProfile) {
+          await ensureUserProfile();
+          if (!userProfile) {
+            throw new Error('User profile missing.');
+          }
+        }
         const params = new URLSearchParams({ userId: userProfile.userId });
         const data = await requireJson(`/api/sessions/${conversation.id}/messages?${params.toString()}`);
         conversation.messages = Array.isArray(data.messages) ? data.messages : [];
@@ -1152,6 +1237,9 @@
         if (!event.target.closest('.session-actions')) {
           closeAllMenus();
         }
+        if (!event.target.closest('.user-pill') && !event.target.closest('#user-menu')) {
+          closeUserMenu();
+        }
       });
 
       const startNewConversation = async () => {
@@ -1177,6 +1265,24 @@
         startNewConversation();
       });
 
+      userEl?.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!userProfile) {
+          ensureUserProfile();
+          return;
+        }
+        toggleUserMenu();
+      });
+
+      userMenuEl?.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === 'logout') {
+          logoutUser();
+        }
+      });
+
       const bootstrap = async () => {
         try {
           await ensureUserProfile();
@@ -1194,3 +1300,34 @@
     </script>
   </body>
 </html>
+      const closeUserMenu = () => {
+        if (!userMenuEl) return;
+        userMenuEl.classList.remove('is-open');
+        userEl?.setAttribute('aria-expanded', 'false');
+      };
+
+      const toggleUserMenu = () => {
+        if (!userMenuEl) return;
+        const isOpen = userMenuEl.classList.contains('is-open');
+        if (isOpen) {
+          closeUserMenu();
+        } else {
+          userMenuEl.classList.add('is-open');
+          userEl?.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      const logoutUser = () => {
+        localStorage.removeItem(STORAGE_KEYS.user);
+        localStorage.removeItem(STORAGE_KEYS.activeSession);
+        userProfile = null;
+        conversations = [];
+        activeConversationId = null;
+        closeUserMenu();
+        renderUserInfo();
+        conversationEl.innerHTML =
+          '<p class="session-meta">You have been logged out. Reloading…</p>';
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      };
