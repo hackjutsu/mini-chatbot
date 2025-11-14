@@ -28,17 +28,19 @@ const Composer = ({ disabled, onSubmit, placeholder, busyLabel }) => {
 
   return (
     <form className="chat-form" onSubmit={handleSubmit}>
-      <textarea
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder={placeholder}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        required
-      />
-      <button type="submit" className="chat-submit" disabled={disabled || !value.trim()}>
-        {disabled ? busyLabel : 'Send'}
-      </button>
+      <div className="composer-wrapper">
+        <textarea
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder={placeholder}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          required
+        />
+        <button type="submit" className="chat-submit" disabled={disabled || !value.trim()}>
+          {disabled ? '…' : '↑'}
+        </button>
+      </div>
     </form>
   );
 };
