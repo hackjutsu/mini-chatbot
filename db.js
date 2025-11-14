@@ -18,6 +18,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL,
     username_normalized TEXT NOT NULL UNIQUE,
+    preferred_model TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -43,15 +44,35 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at ASC);
 `);
 
+const userTableInfo = db.prepare('PRAGMA table_info(users)').all();
+const hasPreferredModelColumn = userTableInfo.some((column) => column.name === 'preferred_model');
+if (!hasPreferredModelColumn) {
+  db.exec('ALTER TABLE users ADD COLUMN preferred_model TEXT');
+}
+
 const statements = {
   createUser: db.prepare(
-    'INSERT INTO users (id, username, username_normalized) VALUES (?, ?, ?)'
+    'INSERT INTO users (id, username, username_normalized, preferred_model) VALUES (?, ?, ?, ?)'
   ),
   findUserByUsername: db.prepare(
-    'SELECT id, username, username_normalized AS usernameNormalized, created_at AS createdAt FROM users WHERE username_normalized = ?'
+    `SELECT
+      id,
+      username,
+      username_normalized AS usernameNormalized,
+      preferred_model AS preferredModel,
+      created_at AS createdAt
+    FROM users
+    WHERE username_normalized = ?`
   ),
   findUserById: db.prepare(
-    'SELECT id, username, username_normalized AS usernameNormalized, created_at AS createdAt FROM users WHERE id = ?'
+    `SELECT
+      id,
+      username,
+      username_normalized AS usernameNormalized,
+      preferred_model AS preferredModel,
+      created_at AS createdAt
+    FROM users
+    WHERE id = ?`
   ),
   createSession: db.prepare(
     'INSERT INTO sessions (id, user_id, title) VALUES (?, ?, ?)'
@@ -90,17 +111,18 @@ const statements = {
     'SELECT id, role, content, created_at AS createdAt FROM messages WHERE session_id = ? ORDER BY created_at ASC'
   ),
   touchSession: db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  updateUserModel: db.prepare('UPDATE users SET preferred_model = ? WHERE id = ?'),
 };
 
 const normalizeUsername = (username = '') => username.trim().toLowerCase();
 
-const createUser = (username) => {
+const createUser = (username, preferredModel = null) => {
   const normalized = normalizeUsername(username);
   if (!normalized) {
     throw new Error('Username required');
   }
   const id = randomUUID();
-  statements.createUser.run(id, username.trim(), normalized);
+  statements.createUser.run(id, username.trim(), normalized, preferredModel || null);
   return statements.findUserById.get(id);
 };
 
@@ -143,6 +165,10 @@ const addMessage = (sessionId, role, content) => {
   return id;
 };
 
+const setUserPreferredModel = (userId, model) => {
+  statements.updateUserModel.run(model ?? null, userId);
+};
+
 module.exports = {
   DEFAULT_SESSION_TITLE,
   createSession,
@@ -155,4 +181,5 @@ module.exports = {
   removeSession,
   updateSessionTitle,
   addMessage,
+  setUserPreferredModel,
 };

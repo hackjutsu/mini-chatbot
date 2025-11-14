@@ -284,6 +284,61 @@
         background: rgba(37, 99, 235, 0.08);
       }
 
+      .model-menu-wrapper {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .model-pill {
+        background: rgba(15, 23, 42, 0.05);
+        color: #1e293b;
+        cursor: pointer;
+        border: none;
+        outline: none;
+      }
+
+      .model-pill:hover,
+      .model-pill:focus-visible {
+        background: rgba(37, 99, 235, 0.12);
+      }
+
+      .model-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.15);
+        padding: 8px;
+        min-width: 200px;
+        display: none;
+        flex-direction: column;
+        z-index: 40;
+      }
+
+      .model-menu.is-open {
+        display: flex;
+      }
+
+      .model-menu button {
+        border: none;
+        background: transparent;
+        text-align: left;
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .model-menu button:hover {
+        background: rgba(37, 99, 235, 0.08);
+      }
+
       h1 {
         font-size: clamp(1.4rem, 2vw, 2rem);
         margin: 0;
@@ -527,7 +582,13 @@
                 <button type="button" data-action="logout">Log out</button>
               </div>
             </div>
-            <span class="pill model-pill" id="model-pill">Model: —</span>
+            <div class="model-menu-wrapper">
+              <button type="button" class="pill model-pill" id="model-pill" aria-haspopup="true" aria-expanded="false">
+                <span id="model-label">Model: —</span>
+                <span aria-hidden="true">▾</span>
+              </button>
+              <div class="model-menu" id="model-menu"></div>
+            </div>
             <span class="status-pill" id="status">Ready</span>
           </div>
         </header>
@@ -556,7 +617,9 @@
       const promptField = document.getElementById('prompt');
       const conversationEl = document.getElementById('conversation');
       const statusEl = document.getElementById('status');
-      const modelEl = document.getElementById('model-pill');
+      const modelButton = document.getElementById('model-pill');
+      const modelLabelEl = document.getElementById('model-label');
+      const modelMenuEl = document.getElementById('model-menu');
       const userEl = document.getElementById('user-pill');
       const userLabelEl = document.getElementById('user-pill-label');
       const userMenuEl = document.getElementById('user-menu');
@@ -707,6 +770,90 @@
         }
       };
 
+      const renderModelLabel = () => {
+        if (modelLabelEl) {
+          modelLabelEl.textContent = selectedModel ? `Model: ${selectedModel}` : 'Model: —';
+        }
+        modelButton?.setAttribute(
+          'aria-expanded',
+          modelMenuEl?.classList.contains('is-open') ? 'true' : 'false'
+        );
+      };
+
+      const renderModelMenu = () => {
+        if (!modelMenuEl) return;
+        modelMenuEl.innerHTML = '';
+        if (!availableModels.length) {
+          const empty = document.createElement('div');
+          empty.className = 'session-meta';
+          empty.textContent = 'No models available.';
+          modelMenuEl.append(empty);
+          return;
+        }
+        availableModels.forEach((model) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.model = model;
+          button.textContent = model === selectedModel ? `✓ ${model}` : model;
+          modelMenuEl.append(button);
+        });
+      };
+
+      const closeModelMenu = () => {
+        if (!modelMenuEl) return;
+        modelMenuEl.classList.remove('is-open');
+        renderModelLabel();
+      };
+
+      const toggleModelMenu = () => {
+        if (!modelMenuEl) return;
+        const isOpen = modelMenuEl.classList.contains('is-open');
+        if (isOpen) {
+          closeModelMenu();
+        } else {
+          renderModelMenu();
+          modelMenuEl.classList.add('is-open');
+          renderModelLabel();
+        }
+      };
+
+      const loadModels = async () => {
+        if (!userProfile) return;
+        try {
+          const params = new URLSearchParams({ userId: userProfile.userId });
+          const data = await requireJson(`/api/models?${params.toString()}`);
+          availableModels = Array.isArray(data?.models) ? data.models : [];
+          selectedModel = data?.selectedModel || null;
+          if (userProfile) {
+            userProfile.preferredModel = selectedModel;
+            persistUserProfile(userProfile);
+          }
+          renderModelMenu();
+          renderModelLabel();
+        } catch (error) {
+          console.error('Unable to fetch model list:', error);
+          availableModels = [];
+          selectedModel = null;
+          renderModelMenu();
+          renderModelLabel();
+        }
+      };
+
+      const updateUserModelSelection = async (model) => {
+        if (!userProfile || !model || model === selectedModel) return;
+        await requireJson(`/api/users/${userProfile.userId}/model`, {
+          method: 'PATCH',
+          body: { model },
+        });
+        selectedModel = model;
+        if (userProfile) {
+          userProfile.preferredModel = model;
+          persistUserProfile(userProfile);
+        }
+        renderModelMenu();
+        renderModelLabel();
+      };
+
       const closeUserMenu = () => {
         if (!userMenuEl) return;
         userMenuEl.classList.remove('is-open');
@@ -730,8 +877,12 @@
         userProfile = null;
         conversations = [];
         activeConversationId = null;
+        availableModels = [];
+        selectedModel = null;
         closeUserMenu();
         renderUserInfo();
+        renderModelMenu();
+        renderModelLabel();
         conversationEl.innerHTML =
           '<p class="session-meta">You have been logged out. Reloading…</p>';
         setTimeout(() => {
@@ -742,8 +893,11 @@
       let userProfile = loadStoredProfile();
       let conversations = [];
       let activeConversationId = null;
+      let availableModels = [];
+      let selectedModel = null;
 
       renderUserInfo();
+      renderModelLabel();
 
       const getActiveConversation = () =>
         conversations.find((conversation) => conversation.id === activeConversationId);
@@ -779,11 +933,19 @@
               method: 'POST',
               body: { username },
             });
-            userProfile = { userId: created.id, username: created.username };
+            userProfile = {
+              userId: created.id,
+              username: created.username,
+              preferredModel: created.preferredModel || null,
+            };
           } else if (!lookup.ok) {
             throw new Error(lookup.data?.error || 'Unable to look up username.');
           } else {
-            userProfile = { userId: lookup.data.id, username: lookup.data.username };
+            userProfile = {
+              userId: lookup.data.id,
+              username: lookup.data.username,
+              preferredModel: lookup.data.preferredModel || null,
+            };
           }
           persistUserProfile(userProfile);
           renderUserInfo();
@@ -940,20 +1102,6 @@
           item.append(selectButton, actions);
           sessionListEl.append(item);
         });
-      };
-
-      const loadModelInfo = async () => {
-        if (!modelEl) return;
-        try {
-          const response = await fetch('/api/config');
-          if (!response.ok) throw new Error('Failed to load config');
-          const data = await response.json();
-          const label = data?.model ? `Model: ${data.model}` : 'Model: Unknown';
-          modelEl.textContent = label;
-        } catch (error) {
-          console.error('Unable to fetch model info:', error);
-          modelEl.textContent = 'Model: unavailable';
-        }
       };
 
       const scrollConversationToBottom = () => {
@@ -1274,6 +1422,9 @@
         if (!event.target.closest('.user-pill') && !event.target.closest('#user-menu')) {
           closeUserMenu();
         }
+        if (!event.target.closest('.model-menu-wrapper')) {
+          closeModelMenu();
+        }
       });
 
       const startNewConversation = async () => {
@@ -1317,11 +1468,37 @@
         }
       });
 
+      modelButton?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (!userProfile) {
+          await ensureUserProfile();
+        }
+        if (!userProfile) return;
+        if (!availableModels.length) {
+          await loadModels();
+        }
+        toggleModelMenu();
+      });
+
+      modelMenuEl?.addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const { model } = button.dataset;
+        closeModelMenu();
+        if (!model || model === selectedModel) return;
+        try {
+          await updateUserModelSelection(model);
+        } catch (error) {
+          console.error('Unable to switch model:', error);
+          alert(error.message || 'Failed to switch model.');
+        }
+      });
+
       const bootstrap = async () => {
         try {
           await ensureUserProfile();
+          await loadModels();
           await loadSessions();
-          await loadModelInfo();
         } catch (error) {
           console.error('Failed to initialize app:', error);
           conversationEl.innerHTML =
