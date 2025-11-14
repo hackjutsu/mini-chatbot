@@ -50,7 +50,7 @@ body {
 .session-panel,
 .chat-panel {
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-soft);
   padding: 24px;
@@ -81,7 +81,7 @@ body {
 
 .new-chat-btn {
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 14px;
   background: var(--accent);
   color: #fff;
@@ -148,7 +148,7 @@ body {
   align-items: center;
   gap: 12px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 12px;
   background: #fcfdff;
   transition: border-color 120ms ease, box-shadow 120ms ease;
@@ -233,7 +233,7 @@ body {
   min-width: 150px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: var(--shadow-floating);
   display: flex;
   flex-direction: column;
@@ -247,7 +247,7 @@ body {
   text-align: left;
   font: inherit;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
@@ -263,7 +263,7 @@ body {
   flex: 1;
   min-height: 0;
   background: #f9fafc;
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 18px;
   overflow-y: auto;
   display: flex;
@@ -276,7 +276,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--accent-soft);
   border: 1px solid var(--border);
 }
@@ -285,7 +285,7 @@ body {
 .character-avatar {
   width: 52px;
   height: 52px;
-  border-radius: 16px;
+  border-radius: 12px;
   object-fit: cover;
   background: #fff;
   display: inline-flex;
@@ -310,7 +310,7 @@ body {
 
 .message {
   padding: 12px 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
   border: 1px solid #eef1f5;
   max-width: 620px;
@@ -343,7 +343,7 @@ body {
   background: #0f172a;
   color: #f8fafc;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow-x: auto;
 }
 
@@ -395,7 +395,7 @@ body {
   flex: 1;
   min-height: 44px;
   max-height: 140px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   padding: 10px 14px;
   font: inherit;
@@ -406,7 +406,7 @@ body {
 .chat-submit {
   height: 44px;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   background: var(--accent);
   color: #fff;
@@ -434,7 +434,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   padding: 6px 14px;
   background: #fff;
@@ -449,12 +449,7 @@ body {
   padding: 8px 34px 8px 14px;
   background: linear-gradient(120deg, rgba(79, 70, 229, 0.08), rgba(99, 102, 241, 0.08));
   position: relative;
-}
-
-.pill-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: var(--muted);
+  border-radius: 12px;
 }
 
 .pill-value {
@@ -474,6 +469,7 @@ body {
 .model-pill {
   color: var(--text);
   gap: 12px;
+  border-radius: 12px;
 }
 
 .user-menu-wrapper,
@@ -489,7 +485,7 @@ body {
   min-width: 200px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: var(--shadow-floating);
   padding: 8px;
   display: flex;
@@ -503,7 +499,7 @@ body {
   background: transparent;
   text-align: left;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
@@ -542,7 +538,7 @@ body {
   width: min(620px, 95vw);
   max-height: 90vh;
   background: var(--surface);
-  border-radius: 24px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   padding: 24px;
   display: flex;
@@ -571,7 +567,7 @@ body {
   right: 16px;
   border: none;
   background: #f3f4f6;
-  border-radius: 10px;
+  border-radius: 12px;
   width: 32px;
   height: 32px;
   cursor: pointer;
@@ -594,7 +590,7 @@ body {
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   background: #fafbff;
 }
 
@@ -634,7 +630,7 @@ body {
 
 .character-picker__primary {
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 12px 18px;
   background: var(--accent);
   color: #fff;
@@ -661,7 +657,7 @@ body {
 .modal-panel {
   width: min(520px, 95vw);
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: 12px;
   box-shadow: var(--shadow-floating);
   padding: 24px;
 }
