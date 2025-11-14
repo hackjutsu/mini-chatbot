@@ -1,43 +1,31 @@
 # Character Persona System
 
-## Goals
-- Let each user define reusable characters (name, avatar, persona prompt) and reuse them across conversations.
-- Require the user to pick a character (or "no character") when starting a session so the assistant can role-play in that persona.
-- Persist the persona background server-side and inject it into `/api/chat` automatically, avoiding any trust in browser-provided prompts.
-- Seed three starter characters with avatars so new users can try the feature immediately.
+## Feature Set
+- Users can create characters (name, background prompt, optional avatar) and reuse them across sessions.
+- A single picker (invoked from `+ New`) lets you select an existing character, create a new one inline, or start with “No character.”
+- Sessions remember the chosen character; each chat loads that persona automatically and shows a banner/avatar in the transcript.
+- Characters can be edited or deleted; sessions referencing a deleted persona fall back to the default assistant.
+- Three seed characters (Nova, Chef Lumi, Professor Willow) with bundled SVG avatars are created for every user.
 
-## Data Model
+## Architecture
 ```
-users
-├─ id, username, preferred_model, …
-├─ characters (1:N)
-│   ├─ id, name, prompt, avatar_url
-│   └─ ON DELETE CASCADE per user
-└─ sessions (1:N)
-    ├─ id, title, character_id (nullable)
-    └─ ON DELETE SET NULL when a character is removed
+┌────────────┐     REST      ┌──────────────┐     SQLite (better-sqlite3)   ┌────────┐
+│  Browser   │ ────────────► │ Express API  │ ─────────────────────────────►│ users  │
+│ (picker UI)│ ◄──────────── │  server.js   │ ◄──────────────────────────── │ characters
+└────────────┘  start chat   └──────────────┘  per-user character tables    │ sessions
+        │                         │                                         └────────┘
+        │                         │ HTTP keep-alive                           │ Ollama
+        │ start chat              │                                           ▼
+        └────────────────────────►                                  prompts prepended
 ```
+- **Browser**: only needs the picker modal and lightweight REST calls (`GET/POST/PATCH/DELETE /api/characters`, `POST /api/sessions`). No persona logic lives in local storage aside from the selected ID and avatar thumbnail.
+- **Express API**: stores characters per user, exposes CRUD endpoints, and ensures `/api/chat` prepends the persona prompt as a `system` message before proxying to Ollama.
+- **SQLite**: `users`, `characters`, `sessions`, `messages` tables. `sessions.character_id` references the selected persona; foreign keys keep data consistent.
+- **Ollama**: sees the persona prompt + conversation history; nothing changes downstream except the initial system message.
 
-- `characters` is keyed per user and stores all persona metadata (name, background text, avatar URL).
-- `sessions.character_id` links a chat to the selected persona; if `NULL`, the default assistant style is used.
-- Three default characters (Nova, Chef Lumi, Professor Willow) plus SVG avatars are inserted whenever a user is created or whenever we detect a user has zero characters.
-
-## API Surface
-- `GET /api/characters?userId=…` → list all characters for a user (auto-seeds defaults if empty).
-- `POST /api/characters` / `PATCH /api/characters/:id` / `DELETE /api/characters/:id` → manage characters.
-- `POST /api/sessions` now accepts an optional `characterId` and stores it on the new session.
-- `/api/sessions` and `/api/sessions/:id/messages` include the attached `character` blob so the UI can display avatars and persona summaries.
-- `/api/chat` loads the session’s character prompt (if any) and prepends it as a `system` message before forwarding the conversation to Ollama.
-
-## Frontend Flow
-- Characters live inside a dedicated modal (opened via the header “Characters” button or when starting a new chat). Cards show avatar, persona summary, and the full prompt so users immediately understand the role.
-- When the modal is opened in “Start chat” mode, cards offer a single “Start chat” button (including a “No character” card). In “Manage” mode the same cards expose Edit/Delete buttons.
-- Conversation list shows the character name next to message counts, and the active chat area renders a persona banner that stays pinned above the transcript.
-- When the user deletes or edits a character, all local sessions referencing that character update in-place; if the persona is removed, those sessions fall back to “no character”.
-
-## Prompt Injection Strategy
-1. Load messages for the session from SQLite as before.
-2. If the session has a `character_id`, fetch the corresponding character prompt and insert `[{ role: 'system', content: prompt }]` ahead of the stored history before calling Ollama.
-3. Stream responses back exactly as before; only the initial context changes.
-
-This keeps persona data authoritative on the backend, avoids trusting the browser for prompts, and allows new UX features (avatars, summaries) via the existing REST responses.
+## Key Decisions
+- **Server-authoritative personas**: keeping prompts on the backend avoids trusting arbitrary text from the browser and lets us inject them consistently when `/api/chat` runs.
+- **Seed data**: shipping three starter personas (with avatars) gives every user something to try and reduces the empty-state work in the picker.
+- **Single picker modal**: instead of multiple UI entry points, every chat starts via one selector that doubles as a management surface. The UI shows one list with radio-style selection, inline edit/delete, and a single “Start chat” CTA.
+- **Prompt injection**: persona text is stored verbatim and added as `[{ role: 'system', content: prompt }]` ahead of the chat history, so downstream code doesn’t need to know about characters.
+- **Graceful fallbacks**: if a persona is deleted, sessions referencing it are updated to `NULL` so `/api/chat` falls back to the default assistant without errors.
