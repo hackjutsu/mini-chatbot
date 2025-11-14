@@ -19,7 +19,7 @@ const UserMenu = ({ user, onLogout }) => {
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <span className="pill-value">@{user.username}</span>
+        <span>@{user.username}</span>
         <span className="pill-caret" aria-hidden="true">
           ▾
         </span>

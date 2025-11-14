@@ -438,39 +438,27 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
   padding: 6px 14px;
-  background: #fff;
+  background: linear-gradient(120deg, rgba(79, 70, 229, 0.08), rgba(99, 102, 241, 0.08));
   cursor: pointer;
   font: inherit;
-}
-
-.user-pill {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 34px 8px 14px;
-  background: linear-gradient(120deg, rgba(79, 70, 229, 0.08), rgba(99, 102, 241, 0.08));
-  position: relative;
-  border-radius: 12px;
-}
-
-.pill-value {
   font-weight: 600;
-  font-size: 0.9rem;
+}
+
+.user-pill,
+.model-pill {
+  color: var(--text);
+}
+
+.model-pill span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pill-caret {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-left: 6px;
+  font-size: 0.8rem;
   color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.model-pill {
-  color: var(--text);
-  gap: 12px;
-  border-radius: 12px;
 }
 
 .user-menu-wrapper,
