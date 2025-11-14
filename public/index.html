@@ -683,6 +683,11 @@
         }
       };
 
+      const scrollConversationToBottom = () => {
+        if (!conversationEl) return;
+        conversationEl.scrollTop = conversationEl.scrollHeight;
+      };
+
       const appendMessage = (role, content) => {
         const wrapper = document.createElement('div');
         wrapper.className = `message ${role}`;
@@ -700,7 +705,7 @@
 
         wrapper.append(label, text);
         conversationEl.append(wrapper);
-        conversationEl.scrollTop = conversationEl.scrollHeight;
+        scrollConversationToBottom();
         return wrapper;
       };
 
@@ -818,9 +823,11 @@
           if (!assistantBody) return;
           if (!assistantMessage.content) {
             assistantBody.textContent = '';
+            scrollConversationToBottom();
             return;
           }
           assistantBody.innerHTML = renderAssistantContent(assistantMessage.content);
+          scrollConversationToBottom();
         };
 
         try {
@@ -834,6 +841,7 @@
             assistantMessage.content = 'No response received.';
             if (assistantBody) {
               assistantBody.textContent = assistantMessage.content;
+              scrollConversationToBottom();
             }
           } else {
             renderAssistant();
@@ -844,6 +852,7 @@
             assistantMessage.content = 'Something went wrong. Please try again.';
             if (assistantBody) {
               assistantBody.textContent = assistantMessage.content;
+              scrollConversationToBottom();
             }
           } else {
             renderAssistant();
