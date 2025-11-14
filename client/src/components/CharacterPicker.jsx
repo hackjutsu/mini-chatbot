@@ -73,9 +73,9 @@ const CharacterPicker = ({
                   {character.name.slice(0, 1).toUpperCase()}
                 </div>
               )}
-              <div>
+              <div className="character-details">
                 <strong>{character.name}</strong>
-                <p className="character-meta">{character.prompt}</p>
+                <p className="character-meta character-meta--clamped">{character.prompt}</p>
               </div>
               <div className="character-row-actions">
                 <button
@@ -102,7 +102,7 @@ const CharacterPicker = ({
         </ul>
         <footer className="character-picker__footer">
           <button type="button" className="new-chat-btn" onClick={onCreate}>
-            + Create character
+            Create character
           </button>
           <button
             type="button"

@@ -637,14 +637,11 @@ const App = () => {
     <div className="app-layout">
       <aside className="session-panel">
         <div className="panel-header">
-          <div>
-            <h1>Mini Chatbot</h1>
-            <p>Your on-device chat sandbox.</p>
-          </div>
+          <h1>MINI</h1>
           <UserMenu user={user} onLogout={handleLogout} />
         </div>
         <button type="button" className="new-chat-btn" onClick={openCharacterPicker} disabled={!user}>
-          + New chat
+          New chat
         </button>
         <SessionList
           sessions={sessions}
