@@ -18,21 +18,33 @@ const CharacterBanner = ({ character }) => {
   );
 };
 
+const AssistantLabel = ({ character }) => {
+  const label = character?.name || 'Assistant';
+  if (!character) {
+    return (
+      <div className="message-label">
+        <span className="message-avatar">A</span>
+        <small>{label}</small>
+      </div>
+    );
+  }
+  return (
+    <div className="message-label">
+      {character.avatarUrl ? (
+        <img src={character.avatarUrl} alt={label} className="message-avatar" />
+      ) : (
+        <span className="message-avatar">{label.slice(0, 1).toUpperCase()}</span>
+      )}
+      <small>{label}</small>
+    </div>
+  );
+};
+
 const MessageBubble = ({ message, conversationCharacter }) => {
   const isAssistant = message.role === 'assistant';
-  const assistantLabel = conversationCharacter?.name || 'Assistant';
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
-      {isAssistant ? (
-        <div className="message-label">
-          {conversationCharacter?.avatarUrl ? (
-            <img src={conversationCharacter.avatarUrl} alt={assistantLabel} className="message-avatar" />
-          ) : conversationCharacter ? (
-            <span className="message-avatar">{assistantLabel.slice(0, 1).toUpperCase()}</span>
-          ) : null}
-          <small>{assistantLabel}</small>
-        </div>
-      ) : null}
+      {isAssistant ? <AssistantLabel character={conversationCharacter} /> : null}
       <div className="message-body">
         {isAssistant ? (
           message.content ? (
@@ -79,10 +91,7 @@ const ConversationView = ({
     return (
       <section className="conversation" ref={scrollRef}>
         <div className="message assistant">
-          <div className="message-label">
-            <span className="message-avatar">A</span>
-            <small>Assistant</small>
-          </div>
+          <AssistantLabel character={conversation?.character || null} />
           <div className="message-body">{introMessage}</div>
         </div>
       </section>
@@ -120,10 +129,7 @@ const ConversationView = ({
         ))
       ) : (
         <div className="message assistant">
-          <div className="message-label">
-            <span className="message-avatar">A</span>
-            <small>Assistant</small>
-          </div>
+          <AssistantLabel character={conversation.character} />
           <div className="message-body">{introMessage}</div>
         </div>
       )}
