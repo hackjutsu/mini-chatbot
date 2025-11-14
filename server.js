@@ -29,7 +29,7 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({
         model: OLLAMA_MODEL,
         messages,
-        stream: false,
+        stream: true,
       }),
     });
 
@@ -38,17 +38,81 @@ app.post('/api/chat', async (req, res) => {
       throw new Error(`Ollama request failed: ${response.status} ${text}`);
     }
 
-    const data = await response.json();
-    const reply = data?.message?.content?.trim();
+    const upstreamStream = response.body;
 
-    if (!reply) {
-      return res.status(502).json({ error: 'Model did not return a reply' });
+    if (!upstreamStream || typeof upstreamStream.getReader !== 'function') {
+      throw new Error('Upstream response body is not readable');
     }
 
-    res.json({ reply });
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.status(200);
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders();
+    }
+
+    const reader = upstreamStream.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const writeChunk = (payload) => {
+      try {
+        res.write(`${JSON.stringify(payload)}\n`);
+      } catch (error) {
+        console.error('Failed to write chunk to client:', error);
+        throw error;
+      }
+    };
+
+    const processBuffer = () => {
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, newlineIndex).trim();
+        buffer = buffer.slice(newlineIndex + 1);
+        if (!line) continue;
+
+        let parsed;
+        try {
+          parsed = JSON.parse(line);
+        } catch (error) {
+          console.warn('Skipping non-JSON chunk from Ollama:', line);
+          continue;
+        }
+
+        if (typeof parsed?.message?.content === 'string' && parsed.message.content.length > 0) {
+          writeChunk({ type: 'delta', content: parsed.message.content });
+        } else if (typeof parsed?.response === 'string' && parsed.response.length > 0) {
+          // Some models use `response` instead of `message.content` for streaming tokens.
+          writeChunk({ type: 'delta', content: parsed.response });
+        }
+
+        if (parsed?.error) {
+          writeChunk({ type: 'error', message: parsed.error });
+        }
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      processBuffer();
+    }
+
+    buffer += decoder.decode();
+    processBuffer();
+
+    writeChunk({ type: 'done' });
+    res.end();
   } catch (error) {
     console.error('Error calling Ollama:', error);
-    res.status(500).json({ error: 'Failed to contact Ollama' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to contact Ollama' });
+      return;
+    }
+    res.write(`${JSON.stringify({ type: 'error', message: 'Failed to contact Ollama' })}\n`);
+    res.end();
   }
 });
 

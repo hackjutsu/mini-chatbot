@@ -701,12 +701,81 @@
         wrapper.append(label, text);
         conversationEl.append(wrapper);
         conversationEl.scrollTop = conversationEl.scrollHeight;
+        return wrapper;
       };
 
       const setLoading = (isLoading) => {
         buttonLabel.textContent = isLoading ? 'Sending...' : 'Send';
         submitButton.disabled = isLoading;
         statusEl.textContent = isLoading ? 'Thinking…' : 'Ready';
+      };
+
+      const consumeAssistantStream = async (payloadMessages, onDelta) => {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: payloadMessages }),
+        });
+
+        if (!response.ok) {
+          let detail = '';
+          try {
+            const data = await response.json();
+            detail = data?.error || '';
+          } catch {
+            try {
+              detail = await response.text();
+            } catch {
+              detail = '';
+            }
+          }
+          throw new Error(detail || 'Request failed');
+        }
+
+        if (!response.body || typeof response.body.getReader !== 'function') {
+          throw new Error('Streaming is not supported in this browser.');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const processBuffer = () => {
+          let newlineIndex;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            const rawLine = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            if (!rawLine) continue;
+
+            let payload;
+            try {
+              payload = JSON.parse(rawLine);
+            } catch (error) {
+              console.warn('Skipping malformed chunk:', rawLine);
+              continue;
+            }
+
+            if (payload.type === 'delta' && typeof payload.content === 'string') {
+              onDelta(payload.content);
+            } else if (payload.type === 'error') {
+              throw new Error(payload.message || 'Model failed to respond.');
+            }
+          }
+        };
+
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            processBuffer();
+          }
+
+          buffer += decoder.decode();
+          processBuffer();
+        } finally {
+          reader.releaseLock?.();
+        }
       };
 
       // Enter submits the form; Shift+Enter inserts a newline.
@@ -739,32 +808,49 @@
         promptField.value = '';
         setLoading(true);
 
+        const payloadMessages = conversation.messages.slice();
+        const assistantMessage = { role: 'assistant', content: '' };
+        conversation.messages.push(assistantMessage);
+        const assistantNode = appendMessage('assistant', '');
+        const assistantBody = assistantNode?.querySelector('.message-body');
+
+        const renderAssistant = () => {
+          if (!assistantBody) return;
+          if (!assistantMessage.content) {
+            assistantBody.textContent = '';
+            return;
+          }
+          assistantBody.innerHTML = renderAssistantContent(assistantMessage.content);
+        };
+
         try {
-          const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: conversation.messages }),
+          await consumeAssistantStream(payloadMessages, (delta) => {
+            if (typeof delta !== 'string' || !delta) return;
+            assistantMessage.content += delta;
+            renderAssistant();
           });
 
-          if (!response.ok) {
-            throw new Error('Request failed');
+          if (!assistantMessage.content.trim()) {
+            assistantMessage.content = 'No response received.';
+            if (assistantBody) {
+              assistantBody.textContent = assistantMessage.content;
+            }
+          } else {
+            renderAssistant();
           }
-
-          const data = await response.json();
-          const reply = data?.reply ?? 'No response received.';
-
-          conversation.messages.push({ role: 'assistant', content: reply });
-          appendMessage('assistant', reply);
-          persistState();
-          renderSessionList();
         } catch (error) {
           console.error(error);
-          const fallback = 'Something went wrong. Please try again.';
-          appendMessage('assistant', fallback);
-          conversation.messages.push({ role: 'assistant', content: fallback });
+          if (!assistantMessage.content.trim()) {
+            assistantMessage.content = 'Something went wrong. Please try again.';
+            if (assistantBody) {
+              assistantBody.textContent = assistantMessage.content;
+            }
+          } else {
+            renderAssistant();
+          }
+        } finally {
           persistState();
           renderSessionList();
-        } finally {
           setLoading(false);
           promptField.focus();
         }
