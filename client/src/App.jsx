@@ -637,7 +637,10 @@ const App = () => {
     <div className="app-layout">
       <aside className="session-panel">
         <div className="panel-header">
-          <h1>MINI</h1>
+          <div className="app-brand">
+            <img src="/icon.png" alt="Mini Chatbot logo" className="app-logo" />
+            <span>MINI</span>
+          </div>
           <UserMenu user={user} onLogout={handleLogout} />
         </div>
         <button type="button" className="new-chat-btn" onClick={openCharacterPicker} disabled={!user}>

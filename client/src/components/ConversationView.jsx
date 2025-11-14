@@ -18,17 +18,27 @@ const CharacterBanner = ({ character }) => {
   );
 };
 
-const MessageBubble = ({ message }) => {
+const MessageBubble = ({ message, conversationCharacter }) => {
   const isAssistant = message.role === 'assistant';
+  const assistantLabel = conversationCharacter?.name || 'Assistant';
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
-      <small>{isAssistant ? 'Assistant' : 'You'}</small>
+      {isAssistant ? (
+        <div className="message-label">
+          {conversationCharacter?.avatarUrl ? (
+            <img src={conversationCharacter.avatarUrl} alt={assistantLabel} className="message-avatar" />
+          ) : conversationCharacter ? (
+            <span className="message-avatar">{assistantLabel.slice(0, 1).toUpperCase()}</span>
+          ) : null}
+          <small>{assistantLabel}</small>
+        </div>
+      ) : null}
       <div className="message-body">
         {isAssistant ? (
           message.content ? (
             <div dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
           ) : (
-            <div className="thinking-indicator">
+            <div className="thinking-indicator" aria-label="Generating response">
               <span></span>
               <span></span>
               <span></span>
@@ -37,8 +47,8 @@ const MessageBubble = ({ message }) => {
         ) : (
           message.content
         )}
-        {message.isStreaming ? (
-          <div className="thinking-indicator">
+        {message.isStreaming && message.content ? (
+          <div className="thinking-indicator" aria-label="Generating response">
             <span></span>
             <span></span>
             <span></span>
@@ -69,7 +79,10 @@ const ConversationView = ({
     return (
       <section className="conversation" ref={scrollRef}>
         <div className="message assistant">
-          <small>Assistant</small>
+          <div className="message-label">
+            <span className="message-avatar">A</span>
+            <small>Assistant</small>
+          </div>
           <div className="message-body">{introMessage}</div>
         </div>
       </section>
@@ -99,11 +112,18 @@ const ConversationView = ({
       <CharacterBanner character={conversation.character} />
       {safeMessages.length ? (
         safeMessages.map((message, index) => (
-          <MessageBubble message={message} key={`${message.id ?? 'msg'}-${index}`} />
+          <MessageBubble
+            message={message}
+            key={`${message.id ?? 'msg'}-${index}`}
+            conversationCharacter={conversation.character}
+          />
         ))
       ) : (
         <div className="message assistant">
-          <small>Assistant</small>
+          <div className="message-label">
+            <span className="message-avatar">A</span>
+            <small>Assistant</small>
+          </div>
           <div className="message-body">{introMessage}</div>
         </div>
       )}
