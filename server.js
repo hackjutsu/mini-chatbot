@@ -1,8 +1,28 @@
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const https = require('https');
 
-const fetchFn = globalThis.fetch
+let UndiciAgent;
+try {
+  ({ Agent: UndiciAgent } = require('undici'));
+} catch {
+  UndiciAgent = null;
+}
+
+const httpKeepAliveAgent = new http.Agent({ keepAlive: true });
+const httpsKeepAliveAgent = new https.Agent({ keepAlive: true });
+const undiciDispatcher = UndiciAgent
+  ? new UndiciAgent({
+      connect: { timeout: 30_000 },
+      keepAliveTimeout: 60_000,
+      keepAliveMaxTimeout: 120_000,
+    })
+  : null;
+
+const hasNativeFetch = typeof globalThis.fetch === 'function';
+const fetchFn = hasNativeFetch
   ? globalThis.fetch
   : (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
@@ -10,6 +30,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const OLLAMA_CHAT_URL = process.env.OLLAMA_CHAT_URL || 'http://localhost:11434/api/chat';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+let parsedOllamaUrl;
+let isOllamaHttps = false;
+try {
+  parsedOllamaUrl = new URL(OLLAMA_CHAT_URL);
+  isOllamaHttps = parsedOllamaUrl.protocol === 'https:';
+} catch (error) {
+  console.warn('Invalid OLLAMA_CHAT_URL provided, defaulting to HTTP keep-alive agent.', error);
+}
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -22,8 +50,29 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages array is required' });
   }
 
+  const abortController = new AbortController();
+  let clientClosedEarly = false;
+  const abortUpstream = () => {
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+    }
+  };
+  const handleClientAbort = () => {
+    clientClosedEarly = true;
+    abortUpstream();
+  };
+  const handleResponseClose = () => {
+    if (res.writableEnded) {
+      return;
+    }
+    clientClosedEarly = true;
+    abortUpstream();
+  };
+  req.on('aborted', handleClientAbort);
+  res.on('close', handleResponseClose);
+
   try {
-    const response = await fetchFn(OLLAMA_CHAT_URL, {
+    const fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -31,7 +80,18 @@ app.post('/api/chat', async (req, res) => {
         messages,
         stream: true,
       }),
-    });
+      signal: abortController.signal,
+    };
+
+    if (hasNativeFetch) {
+      if (undiciDispatcher) {
+        fetchOptions.dispatcher = undiciDispatcher;
+      }
+    } else if (parsedOllamaUrl) {
+      fetchOptions.agent = isOllamaHttps ? httpsKeepAliveAgent : httpKeepAliveAgent;
+    }
+
+    const response = await fetchFn(OLLAMA_CHAT_URL, fetchOptions);
 
     if (!response.ok) {
       const text = await response.text();
@@ -106,13 +166,20 @@ app.post('/api/chat', async (req, res) => {
     writeChunk({ type: 'done' });
     res.end();
   } catch (error) {
-    console.error('Error calling Ollama:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to contact Ollama' });
-      return;
+    if (abortController.signal.aborted && clientClosedEarly) {
+      console.warn('Client connection closed before response finished.');
+    } else {
+      console.error('Error calling Ollama:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to contact Ollama' });
+        return;
+      }
+      res.write(`${JSON.stringify({ type: 'error', message: 'Failed to contact Ollama' })}\n`);
+      res.end();
     }
-    res.write(`${JSON.stringify({ type: 'error', message: 'Failed to contact Ollama' })}\n`);
-    res.end();
+  } finally {
+    req.removeListener('aborted', handleClientAbort);
+    res.removeListener('close', handleResponseClose);
   }
 });
 
