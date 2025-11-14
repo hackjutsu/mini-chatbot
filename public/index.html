@@ -375,6 +375,16 @@
         box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
       }
 
+      .status-pill.is-thinking {
+        background: #fef3c7;
+        color: #b45309;
+      }
+
+      .status-pill.is-thinking::before {
+        background: #f59e0b;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+      }
+
       .model-pill {
         background: rgba(15, 23, 42, 0.05);
         color: #1e293b;
@@ -1133,7 +1143,13 @@
       const setLoading = (isLoading) => {
         buttonLabel.textContent = isLoading ? 'Sending...' : 'Send';
         submitButton.disabled = isLoading;
-        statusEl.textContent = isLoading ? 'Thinking…' : 'Ready';
+        if (isLoading) {
+          statusEl.textContent = 'Thinking…';
+          statusEl.classList.add('is-thinking');
+        } else {
+          statusEl.textContent = 'Ready';
+          statusEl.classList.remove('is-thinking');
+        }
       };
 
       const consumeAssistantStream = async (sessionId, userMessage, onDelta) => {
@@ -1504,6 +1520,7 @@
           conversationEl.innerHTML =
             '<p class="session-meta">Unable to load chats. Please refresh and try again.</p>';
           statusEl.textContent = 'Offline';
+          statusEl.classList.remove('is-thinking');
         }
       };
 
