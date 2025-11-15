@@ -631,8 +631,6 @@ const App = () => {
     }
   };
 
-  const activeStatusClass = status === 'Thinking…' ? 'status-pill is-thinking' : 'status-pill';
-
   return (
     <div className="app-shell">
       <div className="app-layout">
@@ -670,7 +668,6 @@ const App = () => {
             onSelect={handleModelSelect}
             isLoading={modelState.isLoading}
           />
-          <span className={activeStatusClass}>{status}</span>
         </header>
         {globalError ? <div className="alert">{globalError}</div> : null}
         <ConversationView
