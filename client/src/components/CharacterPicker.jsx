@@ -64,7 +64,7 @@ const CharacterPicker = ({
           </div>
           <button
             type="button"
-            className="character-picker__close"
+            className="modal-close-btn"
             onClick={onClose}
             aria-label="Close character picker"
           >

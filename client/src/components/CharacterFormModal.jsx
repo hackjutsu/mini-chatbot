@@ -67,16 +67,18 @@ const CharacterFormModal = ({
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-panel">
-        <button
-          type="button"
-          className="modal-close"
-          onClick={onCancel}
-          aria-label="Close character modal"
-          disabled={isSubmitting}
-        >
-          ×
-        </button>
-        <h2>{mode === 'edit' ? 'Edit character' : 'Create character'}</h2>
+        <div className="modal-header">
+          <h2>{mode === 'edit' ? 'Edit character' : 'Create character'}</h2>
+          <button
+            type="button"
+            className="modal-close-btn"
+            onClick={onCancel}
+            aria-label="Close character modal"
+            disabled={isSubmitting}
+          >
+            ×
+          </button>
+        </div>
         <form className="modal-form" onSubmit={handleSubmit}>
           <div className="modal-field">
             <label htmlFor="character-name">Name</label>

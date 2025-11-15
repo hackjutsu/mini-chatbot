@@ -116,7 +116,7 @@ const ShareMessageModal = ({ isOpen, message, conversation, onClose }) => {
       <div className="share-modal">
         <header className="share-modal-header">
           <h2>Share message</h2>
-          <button type="button" className="share-close-btn" onClick={onClose} aria-label="Close share dialog">
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close share dialog">
             ×
           </button>
         </header>
