@@ -2,7 +2,7 @@
 
 A minimal web chat UI with a modern React frontend (Vite, componentized state) backed by a Node.js proxy that streams requests to a locally running Ollama instance (e.g., `qwen2.5`) while persisting users, sessions, and full conversation history in SQLite.
 
-![](./screenshot.png)
+![](./discussions/character-system-ui.png)
 
 
 ## Prerequisites
