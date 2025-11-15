@@ -500,7 +500,7 @@ body {
 }
 
 .menu-check {
-  margin-left: auto;
+  margin-left: 5px;
   color: var(--success);
 }
 
@@ -664,16 +664,30 @@ body {
   cursor: default;
 }
 
-.character-row-actions button {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 4px 10px;
-  background: #fff;
+.character-row-actions .icon-btn {
+  border: none;
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.08);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 1rem;
+  transition: background 120ms ease;
 }
 
-.character-row-actions button:nth-child(2) {
+.character-row-actions .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.character-row-actions .icon-btn:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.character-row-actions .icon-btn:nth-child(2) {
   color: var(--danger);
 }
 
@@ -769,6 +783,7 @@ body {
   background: #fff;
   width: 100%;
   box-sizing: border-box;
+  font-size: small;
 }
 
 .modal-form textarea {

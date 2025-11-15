@@ -1,3 +1,30 @@
+const EditIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M3 11.5L3.8 8.2L9.9 2.1C10.3 1.7 10.9 1.7 11.3 2.1L13.9 4.7C14.3 5.1 14.3 5.7 13.9 6.1L7.8 12.2L4.5 13L3 11.5Z"
+      stroke="#475467"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  </svg>
+);
+
+const DeleteIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M3.5 4.5H12.5M6 4.5V3.5C6 3.22386 6.22386 3 6.5 3H9.5C9.77614 3 10 3.22386 10 3.5V4.5M5 4.5V12.5C5 12.7761 5.22386 13 5.5 13H10.5C10.7761 13 11 12.7761 11 12.5V4.5"
+      stroke="#475467"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M6.5 6.5V11" stroke="#475467" strokeWidth="1" strokeLinecap="round" />
+    <path d="M9.5 6.5V11" stroke="#475467" strokeWidth="1" strokeLinecap="round" />
+  </svg>
+);
+
 const CharacterPicker = ({
   isOpen,
   characters,
@@ -78,21 +105,25 @@ const CharacterPicker = ({
               <div className="character-row-actions">
                 <button
                   type="button"
+                  className="icon-btn"
+                  aria-label="Edit character"
                   onClick={(event) => {
                     event.stopPropagation();
                     onEdit(character);
                   }}
                 >
-                  Edit
+                  <EditIcon />
                 </button>
                 <button
                   type="button"
+                  className="icon-btn"
+                  aria-label="Delete character"
                   onClick={(event) => {
                     event.stopPropagation();
                     onDelete(character);
                   }}
                 >
-                  Delete
+                  <DeleteIcon />
                 </button>
               </div>
             </li>
