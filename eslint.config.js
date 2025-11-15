@@ -20,6 +20,17 @@ module.exports = [
     },
   },
   {
+    files: ['**/__tests__/**/*.js', '**/*.test.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+  },
+  {
     files: ['db.js'],
     languageOptions: {
       ecmaVersion: 'latest',
