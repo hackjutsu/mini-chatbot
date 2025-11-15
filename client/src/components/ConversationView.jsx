@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { renderMarkdown } from '../utils/markdown.js';
+import MessageActionBar from './MessageActionBar.jsx';
+import ShareMessageModal from './ShareMessageModal.jsx';
 
 const CharacterBanner = ({ character }) => {
   if (!character) return null;
@@ -40,7 +42,7 @@ const AssistantLabel = ({ character }) => {
   );
 };
 
-const MessageBubble = ({ message, conversationCharacter }) => {
+const MessageBubble = ({ message, conversationCharacter, onShare }) => {
   const isAssistant = message.role === 'assistant';
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
@@ -66,6 +68,9 @@ const MessageBubble = ({ message, conversationCharacter }) => {
             <span></span>
           </div>
         ) : null}
+        {isAssistant && message.content ? (
+          <MessageActionBar message={message} onShare={onShare} />
+        ) : null}
       </div>
     </div>
   );
@@ -79,6 +84,7 @@ const ConversationView = ({
   errorMessage,
 }) => {
   const scrollRef = useRef(null);
+  const [shareState, setShareState] = useState({ isOpen: false, message: null });
   const safeMessages = useMemo(() => messages || [], [messages]);
 
   useEffect(() => {
@@ -87,53 +93,76 @@ const ConversationView = ({
     node.scrollTop = node.scrollHeight;
   }, [safeMessages]);
 
-  if (!conversation) {
-    return (
-      <section className="conversation" ref={scrollRef}>
-        <div className="message assistant">
-          <AssistantLabel character={conversation?.character || null} />
-          <div className="message-body">{introMessage}</div>
-        </div>
-      </section>
-    );
-  }
+  const openShareModal = (message) => {
+    if (!message?.content) return;
+    setShareState({ isOpen: true, message });
+  };
 
-  if (errorMessage) {
-    return (
-      <section className="conversation" ref={scrollRef}>
+  const closeShareModal = () => {
+    setShareState({ isOpen: false, message: null });
+  };
+
+  const sectionProps = {
+    className: 'conversation',
+    ref: scrollRef,
+  };
+
+  let sectionContent = null;
+
+  if (!conversation) {
+    sectionContent = (
+      <div className="message assistant">
+        <AssistantLabel character={conversation?.character || null} />
+        <div className="message-body">{introMessage}</div>
+      </div>
+    );
+  } else if (errorMessage) {
+    sectionContent = (
+      <>
         <CharacterBanner character={conversation.character} />
         <p className="session-meta">{errorMessage}</p>
-      </section>
+      </>
     );
-  }
-
-  if (isLoading || !messages) {
-    return (
-      <section className="conversation" ref={scrollRef}>
+  } else if (isLoading || !messages) {
+    sectionContent = (
+      <>
         <CharacterBanner character={conversation.character} />
         <p className="session-meta">Loading conversation…</p>
-      </section>
+      </>
+    );
+  } else {
+    sectionContent = (
+      <>
+        <CharacterBanner character={conversation.character} />
+        {safeMessages.length ? (
+          safeMessages.map((message, index) => (
+            <MessageBubble
+              message={message}
+              key={`${message.id ?? 'msg'}-${index}`}
+              conversationCharacter={conversation.character}
+              onShare={openShareModal}
+            />
+          ))
+        ) : (
+          <div className="message assistant">
+            <AssistantLabel character={conversation.character} />
+            <div className="message-body">{introMessage}</div>
+          </div>
+        )}
+      </>
     );
   }
 
   return (
-    <section className="conversation" ref={scrollRef}>
-      <CharacterBanner character={conversation.character} />
-      {safeMessages.length ? (
-        safeMessages.map((message, index) => (
-          <MessageBubble
-            message={message}
-            key={`${message.id ?? 'msg'}-${index}`}
-            conversationCharacter={conversation.character}
-          />
-        ))
-      ) : (
-        <div className="message assistant">
-          <AssistantLabel character={conversation.character} />
-          <div className="message-body">{introMessage}</div>
-        </div>
-      )}
-    </section>
+    <>
+      <section {...sectionProps}>{sectionContent}</section>
+      <ShareMessageModal
+        isOpen={shareState.isOpen}
+        message={shareState.message}
+        conversation={conversation}
+        onClose={closeShareModal}
+      />
+    </>
   );
 };
 
