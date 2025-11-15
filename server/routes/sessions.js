@@ -6,8 +6,8 @@ const {
   updateSessionTitle,
   removeSession,
   getMessagesForSession,
+  getCharactersForUser,
 } = require('../../db');
-const { ensureSeedCharacters } = require('../helpers/characters');
 const { formatCharacterPayload, formatSessionPayload } = require('../helpers/payloads');
 const {
   requireUserFromQuery,
@@ -20,7 +20,7 @@ const router = express.Router();
 
 router.get('/', requireUserFromQuery(), (req, res) => {
   const userId = req.user.id;
-  const characters = ensureSeedCharacters(userId);
+  const characters = getCharactersForUser(userId);
   const characterMap = new Map(
     characters.map((character) => [character.id, formatCharacterPayload(character)])
   );

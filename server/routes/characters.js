@@ -1,6 +1,11 @@
 const express = require('express');
-const { createCharacter, getCharacterOwnedByUser, updateCharacter, removeCharacter } = require('../../db');
-const { ensureSeedCharacters } = require('../helpers/characters');
+const {
+  createCharacter,
+  getCharacterOwnedByUser,
+  updateCharacter,
+  removeCharacter,
+  getCharactersForUser,
+} = require('../../db');
 const { formatCharacterPayload } = require('../helpers/payloads');
 const {
   requireUserFromQuery,
@@ -12,7 +17,7 @@ const router = express.Router();
 
 router.get('/', requireUserFromQuery(), (req, res) => {
   const userId = req.user.id;
-  const characters = ensureSeedCharacters(userId).map((character) => formatCharacterPayload(character));
+  const characters = getCharactersForUser(userId).map((character) => formatCharacterPayload(character));
   return res.json({ characters });
 });
 
