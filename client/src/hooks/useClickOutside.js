@@ -2,18 +2,17 @@ import { useEffect } from 'react';
 
 export const useClickOutside = (ref, handler) => {
   useEffect(() => {
-    if (!handler) return () => {};
-    const handle = (event) => {
+    const listener = (event) => {
       if (!ref.current || ref.current.contains(event.target)) {
         return;
       }
       handler(event);
     };
-    document.addEventListener('mousedown', handle);
-    document.addEventListener('touchstart', handle, { passive: true });
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
     return () => {
-      document.removeEventListener('mousedown', handle);
-      document.removeEventListener('touchstart', handle);
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
     };
-  }, [handler, ref]);
+  }, [ref, handler]);
 };
