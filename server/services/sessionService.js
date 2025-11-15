@@ -80,11 +80,14 @@ const renameSession = (sessionId, userId, title) => {
 
 const deleteSessionForUser = (sessionId, userId) => removeSession(sessionId, userId);
 
+const findOwnedSession = (sessionId, userId) => getSessionOwnedByUser(sessionId, userId) || null;
+
 module.exports = {
   listForUser,
   createForUser,
   getTranscriptForSession,
   renameSession,
   deleteSessionForUser,
+  findOwnedSession,
   CHARACTER_NOT_FOUND,
 };

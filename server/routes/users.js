@@ -1,14 +1,10 @@
 const express = require('express');
-const {
-  createUser,
-  getUserByUsername,
-  setUserPreferredModel,
-} = require('../../db');
 const { formatUserPayload } = require('../helpers/payloads');
 const { isValidUsername } = require('../helpers/validation');
 const { OLLAMA_MODEL } = require('../config');
 const { fetchAvailableModels } = require('../services/ollamaService');
 const { requireUserFromParam } = require('../middleware/requireUser');
+const userService = require('../services/userService');
 
 const router = express.Router();
 
@@ -20,13 +16,13 @@ router.post('/', (req, res) => {
       .json({ error: 'Username must be 3-32 characters (letters, numbers, _ or -).' });
   }
 
-  const existing = getUserByUsername(username);
+  const existing = userService.getByUsername(username);
   if (existing) {
     return res.status(409).json({ error: 'Username already exists.' });
   }
 
   try {
-    const user = createUser(username.trim(), OLLAMA_MODEL);
+    const user = userService.createUser(username.trim(), OLLAMA_MODEL);
     return res.status(201).json(formatUserPayload(user, OLLAMA_MODEL));
   } catch (error) {
     console.error('Failed to create user:', error);
@@ -48,7 +44,7 @@ router.patch(
       if (!models.includes(model)) {
         return res.status(400).json({ error: 'Model is not available on the server.' });
       }
-      setUserPreferredModel(userId, model);
+      userService.setPreferredModel(userId, model);
       return res.json({ model });
     } catch (error) {
       console.error('Failed to update user model:', error);
@@ -62,7 +58,7 @@ router.get('/:username', (req, res) => {
   if (!isValidUsername(username)) {
     return res.status(400).json({ error: 'Invalid username.' });
   }
-  const user = getUserByUsername(username);
+  const user = userService.getByUsername(username);
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }

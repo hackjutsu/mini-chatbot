@@ -52,6 +52,7 @@ The original backend lived entirely inside `server.js`, tightly coupling HTTP ro
 - **Stream abstraction**: Moving `/api/chat` logic into `chatService` enables isolated testing, easier retries, and guards against regressions when adjusting streaming behavior.
 - **Testing strategy**: Rather than spinning up the HTTP listener (blocked in this environment), we test handlers directly by pulling the final function off the Express stack and mocking services/DB. This provides meaningful coverage without requiring network privilege.
 - **Lint everywhere**: ESLint covers server and client, including tests via Jest globals. Combined with Jest suites, this establishes a baseline quality bar for future work.
+- **DB isolation**: Middleware and routes now resolve users/sessions through service modules instead of importing `db.js` directly; only the service layer talks to SQLite, making future persistence swaps straightforward.
 
 ### How the Backend Is Tested
 

@@ -1,7 +1,7 @@
 const express = require('express');
-const { setUserPreferredModel } = require('../../db');
 const { fetchAvailableModels, resolveUserModel } = require('../services/ollamaService');
 const { requireUserFromQuery } = require('../middleware/requireUser');
+const userService = require('../services/userService');
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ router.get('/', requireUserFromQuery(), async (req, res) => {
     const models = await fetchAvailableModels();
     const selectedModel = resolveUserModel(user, models);
     if (selectedModel !== user.preferredModel) {
-      setUserPreferredModel(userId, selectedModel);
+      userService.setPreferredModel(userId, selectedModel);
       user.preferredModel = selectedModel;
     }
     return res.json({

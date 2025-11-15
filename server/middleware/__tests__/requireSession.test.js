@@ -23,45 +23,45 @@ describe('requireSessionForUser', () => {
     console.error.mockRestore();
   });
 
-  it('returns 400 when sessionId missing', () => {
+  it('returns 400 when sessionId missing', async () => {
     const middleware = requireSessionForUser(() => null);
     const req = { user: { id: 'user-1' } };
     const res = createMockRes();
     const next = jest.fn();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'sessionId is required.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when req.user missing', () => {
+  it('returns 500 when req.user missing', async () => {
     const middleware = requireSessionForUser(() => 'session-1');
     const req = {};
     const res = createMockRes();
     const next = jest.fn();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Unable to load session context.' });
   });
 
-  it('returns 404 when session not found', () => {
+  it('returns 404 when session not found', async () => {
     const middleware = requireSessionForUser(() => 'missing');
     const req = { user: { id: 'user-1' } };
     const res = createMockRes();
     const next = jest.fn();
     mockDb.getSessionOwnedByUser.mockReturnValue(null);
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'Session not found.' });
   });
 
-  it('attaches session and calls next when found', () => {
+  it('attaches session and calls next when found', async () => {
     const middleware = requireSessionForUser(() => 'session-1');
     const req = { user: { id: 'user-1' } };
     const res = createMockRes();
@@ -69,7 +69,7 @@ describe('requireSessionForUser', () => {
     const session = { id: 'session-1', title: 'Chat' };
     mockDb.getSessionOwnedByUser.mockReturnValue(session);
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(req.session).toEqual(session);
     expect(next).toHaveBeenCalled();

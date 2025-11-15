@@ -1,13 +1,13 @@
-const { getUserById } = require('../../db');
+const userService = require('../services/userService');
 
 const createUserMiddleware =
   (extractUserId, missingMessage = 'userId is required.') =>
-  (req, res, next) => {
+  async (req, res, next) => {
     const userId = extractUserId(req);
     if (!userId) {
       return res.status(400).json({ error: missingMessage });
     }
-    const user = getUserById(userId);
+    const user = await userService.getById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }

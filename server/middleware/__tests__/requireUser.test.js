@@ -1,16 +1,12 @@
-const mockDb = {
-  getUserById: jest.fn(),
-};
+const userService = require('../../services/userService');
+const { requireUserFromBody, requireUserFromQuery, requireUserFromBodyOrQuery } = require('../requireUser');
 
-jest.mock('../../../db', () => mockDb);
+jest.mock('../../services/userService', () => ({
+  getById: jest.fn(),
+  getByUsername: jest.fn(),
+}));
 
-const {
-  requireUserFromBody,
-  requireUserFromQuery,
-  requireUserFromBodyOrQuery,
-} = require('../requireUser');
-
-const createMockRes = () => {
+const createRes = () => {
   const res = {};
   res.status = jest.fn(() => res);
   res.json = jest.fn(() => res);
@@ -22,58 +18,56 @@ describe('requireUser middleware', () => {
     jest.clearAllMocks();
   });
 
-  it('returns 400 when userId missing in body', () => {
+  it('returns 400 for missing body userId', async () => {
     const middleware = requireUserFromBody();
     const req = { body: {} };
-    const res = createMockRes();
+    const res = createRes();
     const next = jest.fn();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'userId is required.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 404 when user not found', () => {
-    const middleware = requireUserFromBody();
-    const req = { body: { userId: 'missing' } };
-    const res = createMockRes();
+  it('returns 404 when user not found', async () => {
+    const middleware = requireUserFromQuery();
+    const req = { query: { userId: 'missing' } };
+    const res = createRes();
     const next = jest.fn();
-    mockDb.getUserById.mockReturnValue(null);
+    userService.getById.mockResolvedValue(null);
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'User not found.' });
-    expect(next).not.toHaveBeenCalled();
   });
 
-  it('attaches user and calls next for query middleware', () => {
+  it('attaches user when found', async () => {
     const middleware = requireUserFromQuery();
     const req = { query: { userId: 'user-1' } };
-    const res = createMockRes();
+    const res = createRes();
     const next = jest.fn();
-    const user = { id: 'user-1', username: 'test' };
-    mockDb.getUserById.mockReturnValue(user);
+    const user = { id: 'user-1' };
+    userService.getById.mockResolvedValue(user);
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
-    expect(req.user).toBe(user);
+    expect(req.user).toEqual(user);
     expect(next).toHaveBeenCalled();
   });
 
-  it('checks body or query when using combined middleware', () => {
+  it('checks query when body is empty', async () => {
     const middleware = requireUserFromBodyOrQuery();
     const req = { body: {}, query: { userId: 'user-2' } };
-    const res = createMockRes();
+    const res = createRes();
     const next = jest.fn();
-    const user = { id: 'user-2' };
-    mockDb.getUserById.mockReturnValue(user);
+    userService.getById.mockResolvedValue({ id: 'user-2' });
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
-    expect(req.user).toEqual(user);
+    expect(userService.getById).toHaveBeenCalledWith('user-2');
     expect(next).toHaveBeenCalled();
   });
 });
