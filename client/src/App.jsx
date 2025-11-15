@@ -86,7 +86,7 @@ const App = () => {
   const [characters, setCharacters] = useState([]);
   const [activeCharacterId, setActiveCharacterId] = useState(() => readStoredValue(STORAGE_KEYS.activeCharacter));
   const [modelState, setModelState] = useState({ available: [], selected: null, isLoading: false });
-  const [status, setStatus] = useState('Ready');
+  const [, setStatus] = useState('Ready');
   const [globalError, setGlobalError] = useState('');
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState({});
@@ -202,7 +202,6 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId]);
 
   const activeConversation = useMemo(

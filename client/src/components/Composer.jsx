@@ -38,7 +38,7 @@ const Composer = ({ disabled, onSubmit, placeholder, busyLabel }) => {
           required
         />
         <button type="submit" className="chat-submit" disabled={disabled || !value.trim()}>
-          {disabled ? '…' : '↑'}
+          {disabled ? busyLabel || '…' : '↑'}
         </button>
       </div>
     </form>
