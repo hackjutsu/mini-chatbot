@@ -9,11 +9,11 @@
 
 ## Architecture
 ```
-┌────────────┐     REST      ┌──────────────┐     SQLite (better-sqlite3)   ┌────────┐
-│  Browser   │ ────────────► │ Express API  │ ─────────────────────────────►│ users  │
-│ (picker UI)│ ◄──────────── │  server.js   │ ◄──────────────────────────── │ characters
-└────────────┘  start chat   └──────────────┘  per-user character tables    │ sessions
-        │                         │                                         └────────┘
+┌────────────┐     REST      ┌──────────────┐     SQLite (better-sqlite3)   ┌───────────┐
+│  Browser   │ ────────────► │ Express API  │ ─────────────────────────────►│ users     │
+│ (picker UI)│ ◄──────────── │  server.js   │ ◄──────────────────────────── │ characters│
+└────────────┘  start chat   └──────────────┘  per-user character tables    │ sessions  │
+        │                         │                                         └───────────┘
         │                         │ HTTP keep-alive                           │ Ollama
         │ start chat              │                                           ▼
         └────────────────────────►                                  prompts prepended
@@ -29,3 +29,10 @@
 - **Single picker modal**: instead of multiple UI entry points, every chat starts via one selector that doubles as a management surface. The UI shows one list with radio-style selection, inline edit/delete, and a single “Start chat” CTA.
 - **Prompt injection**: persona text is stored verbatim and added as `[{ role: 'system', content: prompt }]` ahead of the chat history, so downstream code doesn’t need to know about characters.
 - **Graceful fallbacks**: if a persona is deleted, sessions referencing it are updated to `NULL` so `/api/chat` falls back to the default assistant without errors.
+
+
+## Screenshots
+![](character-system-ui.png)
+![](character-system-start-chat.png)
+![](character-system-create-character.png)
+![](character-system-edit-character.png)
