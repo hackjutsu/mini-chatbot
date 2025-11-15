@@ -642,9 +642,9 @@ const App = () => {
             href="https://github.com/hackjutsu/mini-chatbot"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Mini Chatbot on GitHub"
           >
-            <img src="/icon.png" alt="Mini Chatbot logo" className="app-logo" />
-            <span>MINI</span>
+            <img src="/icon_rectangle.png" alt="Mini Chatbot logo" className="app-logo" />
           </a>
           <UserMenu user={user} onLogout={handleLogout} />
         </div>
