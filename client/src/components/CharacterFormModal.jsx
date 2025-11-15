@@ -1,6 +1,28 @@
 import { useEffect, useState } from 'react';
 
-const emptyState = { name: '', prompt: '', avatarUrl: '' };
+const presetAvatars = [
+  { id: 'default', label: 'Grey profile', url: '/avatars/default.svg' },
+  { id: 'nova', label: 'Nova', url: '/avatars/nova.svg' },
+  { id: 'lumi', label: 'Chef Lumi', url: '/avatars/lumi.svg' },
+  { id: 'willow', label: 'Professor Willow', url: '/avatars/willow.svg' },
+  { id: 'guide', label: 'Guide', url: '/avatars/guide.svg' },
+  { id: 'artisan', label: 'Artisan', url: '/avatars/artisan.svg' },
+  { id: 'nebula', label: 'Nebula', url: '/avatars/nebula.svg' },
+  { id: 'aurora', label: 'Aurora', url: '/avatars/aurora.svg' },
+];
+
+const buildAvatarList = (currentUrl) => {
+  if (!currentUrl) return presetAvatars;
+  if (presetAvatars.some((avatar) => avatar.url === currentUrl)) {
+    return presetAvatars;
+  }
+  return [
+    ...presetAvatars,
+    { id: 'custom', label: 'Current avatar', url: currentUrl },
+  ];
+};
+
+const emptyState = { name: '', prompt: '', avatarUrl: presetAvatars[0].url };
 
 const CharacterFormModal = ({
   isOpen,
@@ -12,14 +34,17 @@ const CharacterFormModal = ({
   error,
 }) => {
   const [formState, setFormState] = useState(emptyState);
+  const [avatarOptions, setAvatarOptions] = useState(presetAvatars);
 
   useEffect(() => {
     if (isOpen) {
+      const options = buildAvatarList(initialValues?.avatarUrl);
       setFormState({
         name: initialValues?.name || '',
         prompt: initialValues?.prompt || '',
-        avatarUrl: initialValues?.avatarUrl || '',
+        avatarUrl: initialValues?.avatarUrl || options[0].url,
       });
+      setAvatarOptions(options);
     }
   }, [initialValues, isOpen]);
 
@@ -42,41 +67,69 @@ const CharacterFormModal = ({
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-panel">
+        <button
+          type="button"
+          className="modal-close"
+          onClick={onCancel}
+          aria-label="Close character modal"
+          disabled={isSubmitting}
+        >
+          ×
+        </button>
         <h2>{mode === 'edit' ? 'Edit character' : 'Create character'}</h2>
         <form className="modal-form" onSubmit={handleSubmit}>
-          <label htmlFor="character-name">Name</label>
-          <input
-            id="character-name"
-            name="name"
-            value={formState.name}
-            onChange={handleChange}
-            disabled={isSubmitting}
-            required
-          />
-          <label htmlFor="character-prompt">Background / persona</label>
-          <textarea
-            id="character-prompt"
-            name="prompt"
-            rows={4}
-            value={formState.prompt}
-            onChange={handleChange}
-            disabled={isSubmitting}
-            required
-          />
-          <label htmlFor="character-avatar">Avatar URL (optional)</label>
-          <input
-            id="character-avatar"
-            name="avatarUrl"
-            value={formState.avatarUrl || ''}
-            onChange={handleChange}
-            disabled={isSubmitting}
-            placeholder="/avatars/nova.svg"
-          />
+          <div className="modal-field">
+            <label htmlFor="character-name">Name</label>
+            <input
+              id="character-name"
+              name="name"
+              value={formState.name}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="character-prompt">Background / persona</label>
+            <textarea
+              id="character-prompt"
+              name="prompt"
+              rows={4}
+              value={formState.prompt}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="character-prompt">Choose an avatar</label>
+            <fieldset className="avatar-choices modal-field" disabled={isSubmitting}>
+              {/* <legend>Choose an avatar</legend> */}
+              <div className="avatar-grid">
+                {avatarOptions.map((avatar) => (
+                  <label
+                    key={avatar.id}
+                    className={`avatar-option${formState.avatarUrl === avatar.url ? ' is-selected' : ''}`}
+                    aria-label={avatar.label}
+                  >
+                    <input
+                      type="radio"
+                      name="presetAvatar"
+                      value={avatar.url}
+                      checked={formState.avatarUrl === avatar.url}
+                      onChange={(event) =>
+                        setFormState((prev) => ({ ...prev, avatarUrl: event.target.value }))
+                      }
+                    />
+                    <img src={avatar.url} alt="" aria-hidden="true" />
+                    <span className="sr-only">{avatar.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
           {error ? <p className="field-error">{error}</p> : null}
           <div className="modal-actions">
-            <button type="button" className="ghost" onClick={onCancel} disabled={isSubmitting}>
-              Cancel
-            </button>
             <button type="submit" className="primary" disabled={isSubmitting}>
               {isSubmitting ? 'Saving…' : 'Save'}
             </button>

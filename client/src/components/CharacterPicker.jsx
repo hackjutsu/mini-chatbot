@@ -52,10 +52,10 @@ const CharacterPicker = ({
               checked={!selectedCharacterId}
               onChange={() => handleSelect('none')}
             />
-            <div className="character-avatar">—</div>
+            <img src="/avatars/default.svg" alt="Default assistant" className="character-avatar" />
             <div>
               <strong>Default assistant</strong>
-              <p className="character-meta">Keep the base system prompt.</p>
+              <p className="character-meta">The default AI assistant.</p>
             </div>
           </li>
           {characters.map((character) => (
@@ -69,9 +69,7 @@ const CharacterPicker = ({
               {character.avatarUrl ? (
                 <img src={character.avatarUrl} alt={character.name} className="character-avatar" />
               ) : (
-                <div className="character-avatar">
-                  {character.name.slice(0, 1).toUpperCase()}
-                </div>
+                <img src="/avatars/default.svg" alt="Default assistant" className="character-avatar" />
               )}
               <div className="character-details">
                 <strong>{character.name}</strong>

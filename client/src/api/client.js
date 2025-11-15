@@ -44,10 +44,28 @@ export const createUser = (username) =>
 export const fetchCharacters = (userId) =>
   requireJson(`/api/characters?${new URLSearchParams({ userId }).toString()}`);
 
+const DEFAULT_AVATARS = [
+  '/avatars/default.svg',
+  '/avatars/nova.svg',
+  '/avatars/lumi.svg',
+  '/avatars/willow.svg',
+  '/avatars/guide.svg',
+  '/avatars/artisan.svg',
+  '/avatars/nebula.svg',
+];
+
+const withAvatarFallback = (payload = {}) => {
+  if (payload.avatarUrl && payload.avatarUrl.trim()) {
+    return payload;
+  }
+  const random = DEFAULT_AVATARS[Math.floor(Math.random() * DEFAULT_AVATARS.length)];
+  return { ...payload, avatarUrl: random };
+};
+
 export const createCharacter = (userId, payload) =>
   requireJson('/api/characters', {
     method: 'POST',
-    body: { userId, ...payload },
+    body: { userId, ...withAvatarFallback(payload) },
   });
 
 export const updateCharacter = (userId, characterId, payload) =>
