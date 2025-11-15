@@ -27,22 +27,25 @@ The original backend lived entirely inside `server.js`, tightly coupling HTTP ro
 ### Architecture Diagram (text form)
 
 ```
-┌──────────────┐            ┌──────────────┐        ┌────────────┐
-│  Express App │  uses      │  Routers     │  call  │ Middleware │
-└─────┬────────┘            └─────┬────────┘        └─┬──────────┘
-      │                           │                   │
-      │                    ┌──────▼──────┐            │ attaches req.user/session
-      │                    │ Services    │<───────────┘
-      │                    │ (chat,      │
-      │                    │  sessions,  │
-      │                    │  characters)│───┐
-      │                    └──────┬──────┘   │ format DTOs / orchestrate logic
-      │                           │          │
-      │                           ▼          │
-      │                    ┌──────────────┐  │
-      └───────────────────▶│   db.js      │◄─┘
-                           │ better-sqlite│
-                           └──────────────┘
+┌──────────────┐   mounts    ┌──────────────┐   runs    ┌────────────┐
+│  Express App │────────────▶│  Routers     │──────────▶│ Middleware │
+└──────────────┘             └─────┬────────┘           └──┬─────────┘
+                                   │                       │ attaches req.user/session
+                                   ▼                       │
+                             ┌──────────────┐              │
+                             │  Services    │              │
+                             │ (chat,       │<─────────────┘
+                             │  sessions,   │
+                             │  characters, │
+                             │  users)      │
+                             └─────┬────────┘
+                                   │
+                                   ▼
+                             ┌──────────────┐
+                             │   db.js      │
+                             │ better-sqlite│
+                             └──────────────┘
+
 ```
 
 ### Key Decisions
