@@ -634,8 +634,9 @@ const App = () => {
   const activeStatusClass = status === 'Thinking…' ? 'status-pill is-thinking' : 'status-pill';
 
   return (
-    <div className="app-layout">
-      <aside className="session-panel">
+    <div className="app-shell">
+      <div className="app-layout">
+        <aside className="session-panel">
         <div className="panel-header">
           <a
             className="app-brand"
@@ -686,6 +687,7 @@ const App = () => {
           busyLabel={isStreaming ? 'Sending…' : 'Send'}
         />
       </main>
+    </div>
       <CharacterPicker
         isOpen={pickerOpen}
         characters={characters}
@@ -714,6 +716,11 @@ const App = () => {
         error={usernameState.error}
         patternHint="Letters, numbers, underscores, and hyphens only."
       />
+      <div className="disclaimer-container">
+        <p className="disclaimer" role="note">
+          AI can make mistakes. Review important information before relying on it.
+        </p>
+      </div>
     </div>
   );
 };

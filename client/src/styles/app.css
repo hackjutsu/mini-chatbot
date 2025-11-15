@@ -39,6 +39,17 @@ body {
   padding: 32px;
 }
 
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  background: var(--bg);
+  gap: 8px;
+}
+
 .app-layout {
   width: min(1180px, 100%);
   height: calc(100vh - 64px);
@@ -261,6 +272,7 @@ body {
   padding: 8px 10px;
   border-radius: 12px;
   cursor: pointer;
+  font-size: small;
 }
 
 .session-menu-item:hover {
@@ -274,7 +286,7 @@ body {
 .conversation {
   flex: 1;
   min-height: 0;
-  background: #f9fafc;
+  background: #f7f7f7;
   border-radius: 12px;
   padding: 18px;
   overflow-y: auto;
@@ -571,6 +583,19 @@ body {
 
 .chat-submit:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.disclaimer-container {
+  width: min(1180px, 100%);
+  margin: 8px auto 16px;
+  text-align: center;
+}
+
+.disclaimer {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 0;
+  font-style: italic;
 }
 
 .character-picker {
