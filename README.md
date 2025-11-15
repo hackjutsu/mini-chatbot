@@ -1,4 +1,8 @@
-# Mini Chatbot
+<p align="center">
+   <img src="./client/public/icon_rectangle.png" alt="Mini Chatbot logo" width="240" />
+</p>
+
+# Mini Chatbot 
 
 A minimal web chat UI with a modern React frontend (Vite, componentized state) backed by a Node.js proxy that streams requests to a locally running Ollama instance (e.g., `qwen2.5`) while persisting users, sessions, and full conversation history in SQLite.
 
