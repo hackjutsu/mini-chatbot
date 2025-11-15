@@ -9,7 +9,8 @@
     "dev": "npm --prefix client run build && npm start",
     "lint": "eslint .",
     "lint:client": "npm --prefix client run lint",
-    "lint:all": "npm run lint && npm run lint:client"
+    "lint:all": "npm run lint && npm run lint:client",
+    "test:client": "npm --prefix client run test"
   },
   "keywords": [],
   "author": "",

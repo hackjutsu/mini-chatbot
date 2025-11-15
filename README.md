@@ -54,6 +54,18 @@ A minimal web chat UI with a modern React frontend (Vite, componentized state) b
 - Running `npm --prefix client run build` again will refresh the production bundle that Express serves.
 - `npm run dev` is handy when you want to rebuild the client and restart the server without typing two commands.
 
+## Linting & Testing
+
+### Backend
+
+- **Lint**: `npm run lint` (or `npm run lint:all` to lint both backend and frontend).
+- **Tests**: `npm test` runs the Jest suite (services, middleware, route handlers). Tests mock `db.js`/Ollama so no SQLite or network access is required.
+
+### Frontend
+
+- **Lint**: `npm run lint:client` (or `npm run lint:all` to lint backend + frontend together).
+- **Tests**: `npm --prefix client run test` (aliased in the root as `npm run test:client`) runs Vitest with Testing Library and jsdom. A sample component test (`Composer.test.jsx`) ensures the wiring works; add more under `client/src/components/__tests__/`.
+
 ## Environment Variables
 
 | Name | Default | Description |
