@@ -1,38 +1,27 @@
 const express = require('express');
-const {
-  getUserById,
-  createCharacter,
-  getCharacterOwnedByUser,
-  updateCharacter,
-  removeCharacter,
-} = require('../../db');
+const { createCharacter, getCharacterOwnedByUser, updateCharacter, removeCharacter } = require('../../db');
 const { ensureSeedCharacters } = require('../helpers/characters');
 const { formatCharacterPayload } = require('../helpers/payloads');
+const {
+  requireUserFromQuery,
+  requireUserFromBody,
+  requireUserFromBodyOrQuery,
+} = require('../middleware/requireUser');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId query parameter is required.' });
-  }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
+router.get('/', requireUserFromQuery(), (req, res) => {
+  const userId = req.user.id;
   const characters = ensureSeedCharacters(userId).map((character) => formatCharacterPayload(character));
   return res.json({ characters });
 });
 
-router.post('/', (req, res) => {
-  const { userId, name, prompt, avatarUrl } = req.body || {};
-  if (!userId || typeof name !== 'string' || typeof prompt !== 'string') {
+router.post('/', requireUserFromBody(), (req, res) => {
+  const { name, prompt, avatarUrl } = req.body || {};
+  if (typeof name !== 'string' || typeof prompt !== 'string') {
     return res.status(400).json({ error: 'userId, name, and prompt are required.' });
   }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
+  const userId = req.user.id;
   try {
     const character = createCharacter(userId, { name, prompt, avatarUrl });
     return res.status(201).json({ character: formatCharacterPayload(character) });
@@ -42,12 +31,13 @@ router.post('/', (req, res) => {
   }
 });
 
-router.patch('/:characterId', (req, res) => {
+router.patch('/:characterId', requireUserFromBody(), (req, res) => {
   const { characterId } = req.params;
-  const { userId, name, prompt, avatarUrl } = req.body || {};
-  if (!userId || typeof name !== 'string' || typeof prompt !== 'string') {
+  const { name, prompt, avatarUrl } = req.body || {};
+  if (typeof name !== 'string' || typeof prompt !== 'string') {
     return res.status(400).json({ error: 'userId, name, and prompt are required.' });
   }
+  const userId = req.user.id;
   const existing = getCharacterOwnedByUser(characterId, userId);
   if (!existing) {
     return res.status(404).json({ error: 'Character not found.' });
@@ -59,12 +49,9 @@ router.patch('/:characterId', (req, res) => {
   return res.json({ character: formatCharacterPayload(updated) });
 });
 
-router.delete('/:characterId', (req, res) => {
+router.delete('/:characterId', requireUserFromBodyOrQuery(), (req, res) => {
   const { characterId } = req.params;
-  const userId = req.body?.userId || req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId is required.' });
-  }
+  const userId = req.user.id;
   const existing = getCharacterOwnedByUser(characterId, userId);
   if (!existing) {
     return res.status(404).json({ error: 'Character not found.' });

@@ -2,13 +2,13 @@ const express = require('express');
 const {
   createUser,
   getUserByUsername,
-  getUserById,
   setUserPreferredModel,
 } = require('../../db');
 const { formatUserPayload } = require('../helpers/payloads');
 const { isValidUsername } = require('../helpers/validation');
 const { OLLAMA_MODEL } = require('../config');
 const { fetchAvailableModels } = require('../services/ollamaService');
+const { requireUserFromParam } = require('../middleware/requireUser');
 
 const router = express.Router();
 
@@ -34,28 +34,28 @@ router.post('/', (req, res) => {
   }
 });
 
-router.patch('/:userId/model', async (req, res) => {
-  const { userId } = req.params;
-  const { model } = req.body || {};
-  if (!model || typeof model !== 'string') {
-    return res.status(400).json({ error: 'model is required.' });
-  }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
-  try {
-    const models = await fetchAvailableModels();
-    if (!models.includes(model)) {
-      return res.status(400).json({ error: 'Model is not available on the server.' });
+router.patch(
+  '/:userId/model',
+  requireUserFromParam('userId'),
+  async (req, res) => {
+    const { userId } = req.params;
+    const { model } = req.body || {};
+    if (!model || typeof model !== 'string') {
+      return res.status(400).json({ error: 'model is required.' });
     }
-    setUserPreferredModel(userId, model);
-    return res.json({ model });
-  } catch (error) {
-    console.error('Failed to update user model:', error);
-    return res.status(502).json({ error: 'Unable to update model preference.' });
+    try {
+      const models = await fetchAvailableModels();
+      if (!models.includes(model)) {
+        return res.status(400).json({ error: 'Model is not available on the server.' });
+      }
+      setUserPreferredModel(userId, model);
+      return res.json({ model });
+    } catch (error) {
+      console.error('Failed to update user model:', error);
+      return res.status(502).json({ error: 'Unable to update model preference.' });
+    }
   }
-});
+);
 
 router.get('/:username', (req, res) => {
   const username = req.params.username;

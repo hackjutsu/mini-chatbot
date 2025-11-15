@@ -1,18 +1,13 @@
 const express = require('express');
-const { getUserById, setUserPreferredModel } = require('../../db');
+const { setUserPreferredModel } = require('../../db');
 const { fetchAvailableModels, resolveUserModel } = require('../services/ollamaService');
+const { requireUserFromQuery } = require('../middleware/requireUser');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId query parameter is required.' });
-  }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
+router.get('/', requireUserFromQuery(), async (req, res) => {
+  const userId = req.user.id;
+  const user = req.user;
   try {
     const models = await fetchAvailableModels();
     const selectedModel = resolveUserModel(user, models);

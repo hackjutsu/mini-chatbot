@@ -1,28 +1,25 @@
 const express = require('express');
 const {
-  getUserById,
   createSession,
   getSessionsForUser,
   getCharacterOwnedByUser,
-  getSessionOwnedByUser,
   updateSessionTitle,
   removeSession,
   getMessagesForSession,
 } = require('../../db');
 const { ensureSeedCharacters } = require('../helpers/characters');
 const { formatCharacterPayload, formatSessionPayload } = require('../helpers/payloads');
+const {
+  requireUserFromQuery,
+  requireUserFromBody,
+  requireUserFromBodyOrQuery,
+} = require('../middleware/requireUser');
+const { requireSessionForUser } = require('../middleware/requireSession');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId query parameter is required.' });
-  }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
+router.get('/', requireUserFromQuery(), (req, res) => {
+  const userId = req.user.id;
   const characters = ensureSeedCharacters(userId);
   const characterMap = new Map(
     characters.map((character) => [character.id, formatCharacterPayload(character)])
@@ -34,15 +31,9 @@ router.get('/', (req, res) => {
   return res.json({ sessions });
 });
 
-router.post('/', (req, res) => {
-  const { userId, title, characterId } = req.body || {};
-  if (!userId) {
-    return res.status(400).json({ error: 'userId is required.' });
-  }
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
+router.post('/', requireUserFromBody(), (req, res) => {
+  const { title, characterId } = req.body || {};
+  const userId = req.user.id;
   let character = null;
   if (characterId) {
     character = getCharacterOwnedByUser(characterId, userId);
@@ -64,63 +55,70 @@ router.post('/', (req, res) => {
   }
 });
 
-router.get('/:sessionId/messages', (req, res) => {
-  const { sessionId } = req.params;
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId query parameter is required.' });
+router.get(
+  '/:sessionId/messages',
+  requireUserFromQuery(),
+  requireSessionForUser((req) => req.params.sessionId),
+  (req, res) => {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+    const session = req.session;
+    let character = null;
+    if (session.characterId) {
+      const found = getCharacterOwnedByUser(session.characterId, userId);
+      character = formatCharacterPayload(found);
+    }
+    const messages = getMessagesForSession(sessionId).map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: message.createdAt,
+    }));
+    return res.json({
+      session: formatSessionPayload(session, { messageCount: messages.length, character }),
+      messages,
+    });
   }
-  const session = getSessionOwnedByUser(sessionId, userId);
-  if (!session) {
-    return res.status(404).json({ error: 'Session not found.' });
-  }
-  let character = null;
-  if (session.characterId) {
-    const found = getCharacterOwnedByUser(session.characterId, userId);
-    character = formatCharacterPayload(found);
-  }
-  const messages = getMessagesForSession(sessionId).map((message) => ({
-    id: message.id,
-    role: message.role,
-    content: message.content,
-    createdAt: message.createdAt,
-  }));
-  return res.json({
-    session: formatSessionPayload(session, { messageCount: messages.length, character }),
-    messages,
-  });
-});
+);
 
-router.patch('/:sessionId', (req, res) => {
-  const { sessionId } = req.params;
-  const { userId, title } = req.body || {};
-  if (!userId || typeof title !== 'string') {
-    return res.status(400).json({ error: 'userId and title are required.' });
+router.patch(
+  '/:sessionId',
+  requireUserFromBody(),
+  requireSessionForUser((req) => req.params.sessionId),
+  (req, res) => {
+    const { sessionId } = req.params;
+    const { userId, title } = req.body || {};
+    if (!userId || typeof title !== 'string') {
+      return res.status(400).json({ error: 'userId and title are required.' });
+    }
+    const finalUserId = req.user.id;
+    const updated = updateSessionTitle(sessionId, finalUserId, title);
+    if (!updated) {
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    const session = req.session;
+    let character = null;
+    if (session.characterId) {
+      const found = getCharacterOwnedByUser(session.characterId, finalUserId);
+      character = formatCharacterPayload(found);
+    }
+    return res.json({ session: formatSessionPayload(session, { character }) });
   }
-  const updated = updateSessionTitle(sessionId, userId, title);
-  if (!updated) {
-    return res.status(404).json({ error: 'Session not found.' });
-  }
-  const session = getSessionOwnedByUser(sessionId, userId);
-  let character = null;
-  if (session.characterId) {
-    const found = getCharacterOwnedByUser(session.characterId, userId);
-    character = formatCharacterPayload(found);
-  }
-  return res.json({ session: formatSessionPayload(session, { character }) });
-});
+);
 
-router.delete('/:sessionId', (req, res) => {
-  const { sessionId } = req.params;
-  const userId = req.body?.userId || req.query.userId;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId is required.' });
+router.delete(
+  '/:sessionId',
+  requireUserFromBodyOrQuery(),
+  requireSessionForUser((req) => req.params.sessionId),
+  (req, res) => {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+    const removed = removeSession(sessionId, userId);
+    if (!removed) {
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    return res.status(204).end();
   }
-  const removed = removeSession(sessionId, userId);
-  if (!removed) {
-    return res.status(404).json({ error: 'Session not found.' });
-  }
-  return res.status(204).end();
-});
+);
 
 module.exports = router;
