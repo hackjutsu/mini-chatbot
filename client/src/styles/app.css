@@ -85,6 +85,8 @@ body {
   gap: 8px;
   font-weight: 700;
   font-size: 1.1rem;
+  text-decoration: none;
+  color: inherit;
 }
 
 .app-logo {
