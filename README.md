@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="./client/public/icon_rectangle.png" alt="Mini Chatbot logo" width="240" />
+   <img src="./client/public/icon_rectangle.png" alt="Mini Chatbot logo" width="150" />
 </p>
 
 # Mini Chatbot 
