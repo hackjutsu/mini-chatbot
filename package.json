@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "npm --prefix client run build && npm start"
+    "dev": "npm --prefix client run build && npm start",
+    "lint": "eslint .",
+    "lint:client": "npm --prefix client run lint",
+    "lint:all": "npm run lint && npm run lint:client"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +20,10 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0"
   }
 }

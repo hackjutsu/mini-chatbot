@@ -120,7 +120,7 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
         try {
           parsed = JSON.parse(line);
         } catch (error) {
-          console.warn('Skipping non-JSON chunk from Ollama:', line);
+          console.warn('Skipping non-JSON chunk from Ollama:', line, error);
           continue;
         }
 
