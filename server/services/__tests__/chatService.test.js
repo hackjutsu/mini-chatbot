@@ -1,7 +1,6 @@
 const EventEmitter = require('events');
 
 const mockDb = {
-  getCharacterOwnedByUser: jest.fn(),
   getMessagesForSession: jest.fn(),
   addMessage: jest.fn(),
 };
@@ -15,6 +14,9 @@ jest.mock('../ollamaService', () => ({
 }));
 jest.mock('../../config', () => ({
   OLLAMA_MODEL: 'fallback-model',
+}));
+jest.mock('../characterService', () => ({
+  getCharacterForUser: jest.fn(),
 }));
 
 const { streamChatResponse } = require('../chatService');

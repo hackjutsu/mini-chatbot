@@ -1,26 +1,21 @@
 const {
   createSession,
   getSessionsForUser,
-  getCharacterOwnedByUser,
-  getCharactersForUser,
   getMessagesForSession,
   updateSessionTitle,
   removeSession,
   getSessionOwnedByUser,
 } = require('../../db');
 const { formatCharacterPayload, formatSessionPayload } = require('../helpers/payloads');
+const characterService = require('./characterService');
 
 const CHARACTER_NOT_FOUND = 'CHARACTER_NOT_FOUND';
 
-const buildCharacterMap = (userId) => {
-  const characters = getCharactersForUser(userId);
-  return new Map(characters.map((character) => [character.id, formatCharacterPayload(character)]));
-};
-
 const listForUser = (userId) => {
-  const characterMap = buildCharacterMap(userId);
   return getSessionsForUser(userId).map((session) => {
-    const character = session.characterId ? characterMap.get(session.characterId) || null : null;
+    const character = session.characterId
+      ? characterService.getCharacterForUser(session.characterId, userId)
+      : null;
     return formatSessionPayload(session, { character });
   });
 };
@@ -28,13 +23,13 @@ const listForUser = (userId) => {
 const createForUser = (userId, { title, characterId }) => {
   let characterView = null;
   if (characterId) {
-    const owned = getCharacterOwnedByUser(characterId, userId);
-    if (!owned) {
+    const character = characterService.getCharacterForUser(characterId, userId);
+    if (!character) {
       const error = new Error('Character not found for user.');
       error.code = CHARACTER_NOT_FOUND;
       throw error;
     }
-    characterView = formatCharacterPayload(owned);
+    characterView = character;
   }
   const session = createSession(userId, title, characterId || null);
   return formatSessionPayload(
@@ -46,8 +41,7 @@ const createForUser = (userId, { title, characterId }) => {
 const getTranscriptForSession = (session, userId) => {
   let character = null;
   if (session.characterId) {
-    const owned = getCharacterOwnedByUser(session.characterId, userId);
-    character = formatCharacterPayload(owned);
+    character = characterService.getCharacterForUser(session.characterId, userId);
   }
   const messages = getMessagesForSession(session.id).map((message) => ({
     id: message.id,
@@ -72,8 +66,7 @@ const renameSession = (sessionId, userId, title) => {
   }
   let character = null;
   if (session.characterId) {
-    const owned = getCharacterOwnedByUser(session.characterId, userId);
-    character = formatCharacterPayload(owned);
+    character = characterService.getCharacterForUser(session.characterId, userId);
   }
   return formatSessionPayload(session, { character });
 };

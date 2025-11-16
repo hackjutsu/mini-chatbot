@@ -39,8 +39,12 @@ const SessionList = ({
       {sessions.map((session) => {
         const isActive = session.id === activeSessionId;
         const hasCharacter = Boolean(session.character);
+        const isMenuOpen = openMenuId === session.id;
+        const itemClasses = ['session-item'];
+        if (isActive) itemClasses.push('is-active');
+        if (isMenuOpen) itemClasses.push('session-item--menu-open');
         return (
-          <li key={session.id} className={`session-item${isActive ? ' is-active' : ''}`}>
+          <li key={session.id} className={itemClasses.join(' ')}>
             <button
               type="button"
               className="session-select"
@@ -72,14 +76,14 @@ const SessionList = ({
                 type="button"
                 className="session-action-btn"
                 aria-haspopup="true"
-                aria-expanded={openMenuId === session.id}
+                aria-expanded={isMenuOpen}
                 onClick={() =>
                   setOpenMenuId((current) => (current === session.id ? null : session.id))
                 }
               >
                 ⋯
               </button>
-              {openMenuId === session.id ? (
+              {isMenuOpen ? (
                 <div className="session-menu" role="menu">
                   <button
                     type="button"

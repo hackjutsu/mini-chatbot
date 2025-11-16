@@ -1,46 +1,69 @@
-const EditIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d="M3 11.5L3.8 8.2L9.9 2.1C10.3 1.7 10.9 1.7 11.3 2.1L13.9 4.7C14.3 5.1 14.3 5.7 13.9 6.1L7.8 12.2L4.5 13L3 11.5Z"
-      stroke="#475467"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
-  </svg>
-);
+const StatusBadge = ({ status }) => {
+  if (status !== 'draft') return null;
+  return <span className="character-status character-status--draft">Draft</span>;
+};
 
-const DeleteIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d="M3.5 4.5H12.5M6 4.5V3.5C6 3.22386 6.22386 3 6.5 3H9.5C9.77614 3 10 3.22386 10 3.5V4.5M5 4.5V12.5C5 12.7761 5.22386 13 5.5 13H10.5C10.7761 13 11 12.7761 11 12.5V4.5"
-      stroke="#475467"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M6.5 6.5V11" stroke="#475467" strokeWidth="1" strokeLinecap="round" />
-    <path d="M9.5 6.5V11" stroke="#475467" strokeWidth="1" strokeLinecap="round" />
-  </svg>
-);
+const CharacterCard = ({ character, ownerLabel, isSelected, onSelect }) => {
+  const avatar = character.avatarUrl || '/avatars/default.svg';
+  const selectionValue = character.id ?? null;
+  const summary = character.shortDescription?.trim();
+  const description = summary || 'No description yet.';
+
+  return (
+    <div
+      className={`character-manager__list-item picker-card ${isSelected ? 'is-selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      onClick={() => onSelect(selectionValue)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(selectionValue);
+        }
+      }}
+    >
+      <div className="character-summary__top">
+        <img src={avatar} alt={character.name} className="character-summary__avatar" />
+        <div className="character-summary__heading-wrapper">
+          <div className="character-summary__heading">
+            <strong>{character.name}</strong>
+          </div>
+          <StatusBadge status={character.status} />
+        </div>
+      </div>
+      <div className="character-summary__meta-row">
+        <p className="character-summary__meta">{description}</p>
+      </div>
+      <div className="character-summary__footer">
+        <span className="character-summary__owner">By {ownerLabel}</span>
+      </div>
+    </div>
+  );
+};
 
 const CharacterPicker = ({
   isOpen,
-  characters,
+  owned = [],
+  marketplace = [],
   selectedCharacterId,
   onSelect,
   onClose,
   onConfirm,
-  onCreate,
-  onEdit,
-  onDelete,
   isSubmitting,
+  currentUserId,
+  currentUsername,
 }) => {
   if (!isOpen) return null;
 
-  const handleSelect = (value) => {
-    onSelect(value === 'none' ? null : value);
+  const getOwnerLabel = (character) => {
+    if (character.ownerUserId && character.ownerUserId === currentUserId) {
+      return currentUsername || 'You';
+    }
+    if (character.ownerUsername) {
+      return character.ownerUsername;
+    }
+    return 'Mini Chatbot';
   };
 
   const handleBackdropClick = (event) => {
@@ -50,95 +73,78 @@ const CharacterPicker = ({
   };
 
   return (
-    <div
-      className="character-picker is-open"
-      role="dialog"
-      aria-modal="true"
-      onClick={handleBackdropClick}
-    >
+    <div className="character-picker is-open" role="dialog" aria-modal="true" onClick={handleBackdropClick}>
       <div className="character-picker__panel">
         <header className="character-picker__header">
           <div>
             <h2>Choose a character</h2>
-            <p>Start with a persona or keep the default assistant voice.</p>
+            <p> Pick a character from the marketplace, or from your library.</p>
           </div>
-          <button
-            type="button"
-            className="modal-close-btn"
-            onClick={onClose}
-            aria-label="Close character picker"
-          >
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close character picker">
             ×
           </button>
         </header>
-        <ul className="character-list">
-          <li className="character-row" onClick={() => handleSelect('none')}>
-            <input
-              type="radio"
-              name="character"
-              checked={!selectedCharacterId}
-              onChange={() => handleSelect('none')}
-            />
-            <img src="/avatars/default.svg" alt="Default assistant" className="character-avatar" />
-            <div>
-              <strong>Default assistant</strong>
-              <p className="character-meta">The default AI assistant.</p>
+
+        <div className="character-picker__groups">
+
+          <section className="character-picker__section character-picker__section--marketplace">
+            <div className="character-picker__section-header">
+              <div>
+                <h3>Marketplace</h3>
+              </div>
             </div>
-          </li>
-          {characters.map((character) => (
-            <li key={character.id} className="character-row" onClick={() => handleSelect(character.id)}>
-              <input
-                type="radio"
-                name="character"
-                checked={selectedCharacterId === character.id}
-                onChange={() => handleSelect(character.id)}
-              />
-              {character.avatarUrl ? (
-                <img src={character.avatarUrl} alt={character.name} className="character-avatar" />
-              ) : (
-                <img src="/avatars/default.svg" alt="Default assistant" className="character-avatar" />
-              )}
-              <div className="character-details">
-                <strong>{character.name}</strong>
-                <p className="character-meta character-meta--clamped">{character.prompt}</p>
+            <div className="character-picker__grid">
+              {[
+                {
+                  id: null,
+                  name: 'Default assistant',
+                  shortDescription: 'The default AI assistant.',
+                  avatarUrl: '/avatars/default.svg',
+                  status: null,
+                  ownerUserId: null,
+                  ownerUsername: 'Mini Chatbot',
+                },
+                ...marketplace,
+              ].map((character) => (
+                <CharacterCard
+                  key={character.id || 'default-assistant'}
+                  character={character}
+                  ownerLabel={getOwnerLabel(character)}
+                  isSelected={selectedCharacterId === character.id}
+                  onSelect={onSelect}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="character-picker__section">
+            <div className="character-picker__section-header">
+              <div>
+                <h3>My characters</h3>
               </div>
-              <div className="character-row-actions">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Edit character"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEdit(character);
-                  }}
-                >
-                  <EditIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Delete character"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDelete(character);
-                  }}
-                >
-                  <DeleteIcon />
-                </button>
+            </div>
+            {owned.length ? (
+              <div className="character-picker__grid">
+                {owned.map((character) => (
+                  <CharacterCard
+                    key={character.id}
+                    character={character}
+                    ownerLabel="You"
+                    isSelected={selectedCharacterId === character.id}
+                    onSelect={onSelect}
+                  />
+                ))}
               </div>
-            </li>
-          ))}
-        </ul>
+            ) : (
+              <p className="character-meta">No characters yet. Create one in the manager.</p>
+            )}
+          </section>
+
+
+        </div>
+
         <footer className="character-picker__footer">
-          <button type="button" className="new-chat-btn" onClick={onCreate}>
-            Create character
-          </button>
-          <button
-            type="button"
-            className="character-picker__primary"
-            onClick={onConfirm}
-            disabled={isSubmitting}
-          >
+          <button type="button" className="character-picker__primary" onClick={onConfirm} disabled={isSubmitting}>
             {isSubmitting ? 'Starting…' : 'Start chat'}
           </button>
         </footer>

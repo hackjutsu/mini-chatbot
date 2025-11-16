@@ -4,9 +4,15 @@ const formatCharacterPayload = (character) => {
   if (!character) return null;
   return {
     id: character.id,
+    ownerUserId: character.ownerUserId,
+    ownerUsername: character.ownerUsername || null,
     name: character.name,
     prompt: character.prompt,
     avatarUrl: character.avatarUrl || null,
+    shortDescription: character.shortDescription || null,
+    status: character.status || null,
+    version: typeof character.version === 'number' ? character.version : null,
+    lastPublishedAt: character.lastPublishedAt || null,
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
   };

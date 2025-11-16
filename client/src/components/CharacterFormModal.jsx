@@ -22,7 +22,7 @@ const buildAvatarList = (currentUrl) => {
   ];
 };
 
-const emptyState = { name: '', prompt: '', avatarUrl: presetAvatars[0].url };
+const emptyState = { name: '', shortDescription: '', prompt: '', avatarUrl: presetAvatars[0].url };
 
 const CharacterFormModal = ({
   isOpen,
@@ -41,6 +41,7 @@ const CharacterFormModal = ({
       const options = buildAvatarList(initialValues?.avatarUrl);
       setFormState({
         name: initialValues?.name || '',
+        shortDescription: initialValues?.shortDescription || '',
         prompt: initialValues?.prompt || '',
         avatarUrl: initialValues?.avatarUrl || options[0].url,
       });
@@ -59,6 +60,7 @@ const CharacterFormModal = ({
     event.preventDefault();
     onSubmit({
       name: formState.name.trim(),
+      shortDescription: formState.shortDescription.trim(),
       prompt: formState.prompt.trim(),
       avatarUrl: formState.avatarUrl.trim() || null,
     });
@@ -89,6 +91,18 @@ const CharacterFormModal = ({
               onChange={handleChange}
               disabled={isSubmitting}
               required
+            />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="character-short-description">Short description</label>
+            <input
+              id="character-short-description"
+              name="shortDescription"
+              value={formState.shortDescription}
+              onChange={handleChange}
+              maxLength={120}
+              placeholder="One-line summary for discovery"
+              disabled={isSubmitting}
             />
           </div>
           <div className="modal-field">

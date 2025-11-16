@@ -1,12 +1,23 @@
 const mockCharacterService = {
-  listForUser: jest.fn(),
+  listOwned: jest.fn(),
+  listPublished: jest.fn(),
   createForUser: jest.fn(),
   updateForUser: jest.fn(),
   removeForUser: jest.fn(),
-  getOwnedCharacter: jest.fn(),
+  publishForUser: jest.fn(),
+  unpublishForUser: jest.fn(),
 };
 
 jest.mock('../../services/characterService', () => mockCharacterService);
+
+jest.mock('../../middleware/requireUser', () => {
+  const pass = () => (req, res, next) => next();
+  return {
+    requireUserFromQuery: pass,
+    requireUserFromBody: pass,
+    requireUserFromBodyOrQuery: pass,
+  };
+});
 
 const characterRouter = require('../characters');
 
@@ -33,23 +44,33 @@ describe('characters router handlers', () => {
     jest.clearAllMocks();
   });
 
-  it('returns characters list for GET /', () => {
+  it('returns owned lists for GET /', () => {
     const handler = findHandler('get', '/');
     const req = { user: { id: 'user-1' } };
     const res = createRes();
-    const characters = [{ id: 'char-1', name: 'Nova' }];
-    mockCharacterService.listForUser.mockReturnValue(characters);
+    mockCharacterService.listOwned.mockReturnValue([{ id: 'owned' }]);
 
     handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ characters });
+    expect(res.json).toHaveBeenCalledWith({ owned: [{ id: 'owned' }] });
+  });
+
+  it('returns published characters for GET /published', () => {
+    const handler = findHandler('get', '/published');
+    const req = { user: { id: 'user-1' } };
+    const res = createRes();
+    mockCharacterService.listPublished.mockReturnValue([{ id: 'pub' }]);
+
+    handler(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({ characters: [{ id: 'pub' }] });
   });
 
   it('creates character for POST /', () => {
     const handler = findHandler('post', '/');
     const req = {
       user: { id: 'user-1' },
-      body: { name: 'New', prompt: 'Prompt', avatarUrl: null },
+      body: { name: 'New', prompt: 'Prompt', avatarUrl: null, shortDescription: 'desc' },
     };
     const res = createRes();
     const payload = { id: 'char-2', name: 'New' };
@@ -61,11 +82,38 @@ describe('characters router handlers', () => {
     expect(res.json).toHaveBeenCalledWith({ character: payload });
   });
 
+  it('updates character for PATCH /:characterId', () => {
+    const handler = findHandler('patch', '/:characterId');
+    const req = {
+      user: { id: 'user-1' },
+      params: { characterId: 'char-1' },
+      body: { name: 'Nova', prompt: 'Prompt', avatarUrl: null },
+    };
+    const res = createRes();
+    mockCharacterService.updateForUser.mockReturnValue({ id: 'char-1', name: 'Nova' });
+
+    handler(req, res);
+
+    expect(mockCharacterService.updateForUser).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ character: { id: 'char-1', name: 'Nova' } });
+  });
+
+  it('publishes a character for POST /:characterId/publish', () => {
+    const handler = findHandler('post', '/:characterId/publish');
+    const req = { user: { id: 'user-1' }, params: { characterId: 'char-1' } };
+    const res = createRes();
+    mockCharacterService.publishForUser.mockReturnValue({ id: 'char-1', status: 'published' });
+
+    handler(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({ character: { id: 'char-1', status: 'published' } });
+  });
+
   it('returns 404 when deleting missing character', () => {
     const handler = findHandler('delete', '/:characterId');
     const req = { user: { id: 'user-1' }, params: { characterId: 'missing' } };
     const res = createRes();
-    mockCharacterService.getOwnedCharacter.mockReturnValue(null);
+    mockCharacterService.removeForUser.mockReturnValue(false);
 
     handler(req, res);
 
