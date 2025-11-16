@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const StatusBadge = ({ status }) => {
   if (status !== 'draft') return null;
   return <span className="character-status character-status--draft">Draft</span>;
@@ -55,6 +57,7 @@ const CharacterPicker = ({
   currentUsername,
 }) => {
   if (!isOpen) return null;
+  const [sectionsOpen, setSectionsOpen] = useState({ marketplace: true, owned: true });
 
   const getOwnerLabel = (character) => {
     if (character.ownerUserId && character.ownerUserId === currentUserId) {
@@ -72,6 +75,25 @@ const CharacterPicker = ({
     }
   };
 
+  const toggleSection = (key) => {
+    setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const SectionToggle = ({ id, title, isOpen: sectionOpen, onToggle }) => (
+    <button
+      type="button"
+      className="character-picker__section-toggle"
+      aria-expanded={sectionOpen}
+      aria-controls={id}
+      onClick={onToggle}
+    >
+      <span>{title}</span>
+      <span className="character-picker__caret" aria-hidden="true">
+        {sectionOpen ? '▾' : '▸'}
+      </span>
+    </button>
+  );
+
   return (
     <div className="character-picker is-open" role="dialog" aria-modal="true" onClick={handleBackdropClick}>
       <div className="character-picker__panel">
@@ -87,57 +109,79 @@ const CharacterPicker = ({
 
         <div className="character-picker__groups">
 
-          <section className="character-picker__section character-picker__section--marketplace">
+          <section
+            className={`character-picker__section character-picker__section--marketplace${sectionsOpen.marketplace ? '' : ' character-picker__section--collapsed'}`}
+          >
             <div className="character-picker__section-header">
-              <div>
-                <h3>Marketplace</h3>
-              </div>
+              <SectionToggle
+                id="character-picker-marketplace"
+                title="Marketplace"
+                isOpen={sectionsOpen.marketplace}
+                onToggle={() => toggleSection('marketplace')}
+              />
             </div>
-            <div className="character-picker__grid">
-              {[
-                {
-                  id: null,
-                  name: 'Default assistant',
-                  shortDescription: 'The default AI assistant.',
-                  avatarUrl: '/avatars/default.svg',
-                  status: null,
-                  ownerUserId: null,
-                  ownerUsername: 'Mini Chatbot',
-                },
-                ...marketplace,
-              ].map((character) => (
-                <CharacterCard
-                  key={character.id || 'default-assistant'}
-                  character={character}
-                  ownerLabel={getOwnerLabel(character)}
-                  isSelected={selectedCharacterId === character.id}
-                  onSelect={onSelect}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="character-picker__section">
-            <div className="character-picker__section-header">
-              <div>
-                <h3>My characters</h3>
-              </div>
-            </div>
-            {owned.length ? (
+            <div
+              className={`character-picker__section-body${sectionsOpen.marketplace ? '' : ' is-collapsed'}`}
+              id="character-picker-marketplace"
+              aria-hidden={!sectionsOpen.marketplace}
+            >
               <div className="character-picker__grid">
-                {owned.map((character) => (
+                {[
+                  {
+                    id: null,
+                    name: 'Default assistant',
+                    shortDescription: 'The default AI assistant.',
+                    avatarUrl: '/avatars/default.svg',
+                    status: null,
+                    ownerUserId: null,
+                    ownerUsername: 'Mini Chatbot',
+                  },
+                  ...marketplace,
+                ].map((character) => (
                   <CharacterCard
-                    key={character.id}
+                    key={character.id || 'default-assistant'}
                     character={character}
-                    ownerLabel="You"
+                    ownerLabel={getOwnerLabel(character)}
                     isSelected={selectedCharacterId === character.id}
                     onSelect={onSelect}
                   />
                 ))}
               </div>
-            ) : (
-              <p className="character-meta">No characters yet. Create one in the manager.</p>
-            )}
+            </div>
+          </section>
+
+          <section
+            className={`character-picker__section${sectionsOpen.owned ? '' : ' character-picker__section--collapsed'}`}
+          >
+            <div className="character-picker__section-header">
+              <SectionToggle
+                id="character-picker-owned"
+                title="My characters"
+                isOpen={sectionsOpen.owned}
+                onToggle={() => toggleSection('owned')}
+              />
+            </div>
+            <div
+              className={`character-picker__section-body${sectionsOpen.owned ? '' : ' is-collapsed'}`}
+              id="character-picker-owned"
+              aria-hidden={!sectionsOpen.owned}
+            >
+              {owned.length ? (
+                <div className="character-picker__grid">
+                  {owned.map((character) => (
+                    <CharacterCard
+                      key={character.id}
+                      character={character}
+                      ownerLabel="You"
+                      isSelected={selectedCharacterId === character.id}
+                      onSelect={onSelect}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="character-meta">No characters yet. Create one in the manager.</p>
+              )}
+            </div>
           </section>
 
 
