@@ -76,6 +76,23 @@ const sortSessions = (list) =>
     return bTime - aTime;
   });
 
+const normalizeCharacterOrdering = (characters = []) => {
+  const getTimestamp = (value) => {
+    if (!value) return 0;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  };
+
+  return [...characters].sort((a, b) => {
+    const timeDiff = getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
+    if (timeDiff !== 0) return timeDiff;
+    if (a.name && b.name && a.name !== b.name) {
+      return a.name.localeCompare(b.name);
+    }
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+};
+
 const deriveTitleFromMessage = (content = '') => {
   const trimmed = content.replace(/\s+/g, ' ').trim();
   if (!trimmed) return null;
@@ -180,7 +197,7 @@ const App = () => {
     try {
       const data = await fetchCharacterLibrary(user.userId);
       setCharacterLibrary({
-        owned: data.owned || [],
+        owned: normalizeCharacterOrdering(data.owned || []),
         pinned: data.pinned || [],
       });
     } catch (error) {
@@ -217,7 +234,7 @@ const App = () => {
         if (cancelled) return;
 
         setCharacterLibrary({
-          owned: libraryData.owned || [],
+          owned: normalizeCharacterOrdering(libraryData.owned || []),
           pinned: libraryData.pinned || [],
         });
         setPublishedCharacters(publishedData.characters || []);
@@ -573,6 +590,10 @@ const App = () => {
   const handlePublishCharacter = async (character) => {
     if (!user) return;
     setGlobalError('');
+    const confirmed = window.confirm(
+      `Publish "${character.name}" to the marketplace? Everyone will be able to start chats with it.`
+    );
+    if (!confirmed) return;
     try {
       const updated = await publishCharacter(user.userId, character.id);
       updateSessionsForCharacter(updated.character);
@@ -587,6 +608,10 @@ const App = () => {
   const handleUnpublishCharacter = async (character) => {
     if (!user) return;
     setGlobalError('');
+    const confirmed = window.confirm(
+      `Unpublish "${character.name}"? It will disappear from the marketplace but remain in your account.`
+    );
+    if (!confirmed) return;
     try {
       const updated = await unpublishCharacter(user.userId, character.id);
       updateSessionsForCharacter(updated.character);

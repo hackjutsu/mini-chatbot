@@ -18,7 +18,6 @@ const CharacterSummary = ({ character }) => {
       </div>
       <div className="character-summary__meta-row">
         <p className="character-summary__meta">{character.shortDescription || 'No description yet.'}</p>
-        <span className="character-summary__owner">By You</span>
       </div>
     </div>
   );
@@ -59,7 +58,7 @@ const CharacterManager = ({ isOpen, owned = [], onClose, onCreate, onEdit, onPub
                         Publish
                       </button>
                     )}
-                    <button type="button" onClick={() => onDelete(character)}>
+                    <button type="button" className="is-danger" onClick={() => onDelete(character)}>
                       Delete
                     </button>
                   </div>
