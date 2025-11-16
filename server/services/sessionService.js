@@ -8,6 +8,7 @@ const {
 } = require('../../db');
 const { formatCharacterPayload, formatSessionPayload } = require('../helpers/payloads');
 const characterService = require('./characterService');
+const logger = require('../logger');
 
 const CHARACTER_NOT_FOUND = 'CHARACTER_NOT_FOUND';
 
@@ -32,10 +33,16 @@ const createForUser = (userId, { title, characterId }) => {
     characterView = character;
   }
   const session = createSession(userId, title, characterId || null);
-  return formatSessionPayload(
+  const payload = formatSessionPayload(
     { ...session, characterId: characterId || null },
     { messageCount: 0, character: characterView }
   );
+  logger.debug('sessions.create', {
+    userId,
+    sessionId: session.id,
+    characterId: characterId || null,
+  });
+  return payload;
 };
 
 const getTranscriptForSession = (session, userId) => {
@@ -68,10 +75,18 @@ const renameSession = (sessionId, userId, title) => {
   if (session.characterId) {
     character = characterService.getCharacterForUser(session.characterId, userId);
   }
-  return formatSessionPayload(session, { character });
+  const payload = formatSessionPayload(session, { character });
+  logger.debug('sessions.rename', { sessionId, userId });
+  return payload;
 };
 
-const deleteSessionForUser = (sessionId, userId) => removeSession(sessionId, userId);
+const deleteSessionForUser = (sessionId, userId) => {
+  const result = removeSession(sessionId, userId);
+  if (result) {
+    logger.debug('sessions.delete', { sessionId, userId });
+  }
+  return result;
+};
 
 const findOwnedSession = (sessionId, userId) => getSessionOwnedByUser(sessionId, userId) || null;
 

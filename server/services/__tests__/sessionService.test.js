@@ -11,6 +11,13 @@ const mockDb = {
 };
 
 jest.mock('../../../db', () => mockDb);
+const mockLogger = {
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
+jest.mock('../../logger', () => mockLogger);
 
 const mockCharacterService = {
   getCharacterForUser: jest.fn(),
@@ -23,6 +30,7 @@ const sessionService = require('../sessionService');
 describe('sessionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.values(mockLogger).forEach((fn) => fn.mockClear());
   });
 
   describe('listForUser', () => {
