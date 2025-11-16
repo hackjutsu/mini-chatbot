@@ -44,32 +44,29 @@ const AssistantLabel = ({ character }) => {
 
 const MessageBubble = ({ message, conversationCharacter, onShare }) => {
   const isAssistant = message.role === 'assistant';
+  const hasContent = Boolean(message.content);
+  const showActions = isAssistant && hasContent && !message.isStreaming;
+  const showIndicator = Boolean(message.isStreaming);
+  const indicatorClasses = `thinking-indicator${hasContent ? ' message-think-indicator' : ''}`;
+
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
       {isAssistant ? <AssistantLabel character={conversationCharacter} /> : null}
       <div className="message-body">
         {isAssistant ? (
-          message.content ? (
+          hasContent ? (
             <div dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
-          ) : (
-            <div className="thinking-indicator" aria-label="Generating response">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          )
+          ) : null
         ) : (
           message.content
         )}
-        {message.isStreaming && message.content ? (
-          <div className="thinking-indicator" aria-label="Generating response">
+        {showActions ? <MessageActionBar message={message} onShare={onShare} /> : null}
+        {showIndicator ? (
+          <div className={indicatorClasses} aria-label="Generating response">
             <span></span>
             <span></span>
             <span></span>
           </div>
-        ) : null}
-        {isAssistant && message.content ? (
-          <MessageActionBar message={message} onShare={onShare} />
         ) : null}
       </div>
     </div>

@@ -467,6 +467,10 @@ body {
   color: var(--muted);
 }
 
+.message-think-indicator {
+  margin-top: 6px;
+}
+
 .thinking-indicator span {
   width: 6px;
   height: 6px;
@@ -749,6 +753,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: transform 120ms ease, opacity 120ms ease;
+  overflow: hidden;
 }
 
 .chat-submit:disabled {
@@ -758,6 +763,14 @@ body {
 
 .chat-submit:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.chat-submit__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  height: 100%;
 }
 
 .disclaimer-container {

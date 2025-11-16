@@ -38,7 +38,10 @@ const Composer = ({ disabled, onSubmit, placeholder, busyLabel }) => {
           required
         />
         <button type="submit" className="chat-submit" disabled={disabled || !value.trim()}>
-          {disabled ? busyLabel || '…' : '↑'}
+          <span className="chat-submit__icon" aria-hidden="true">
+            {disabled ? '…' : '↑'}
+          </span>
+          <span className="sr-only">{disabled ? busyLabel || 'Sending…' : 'Send message'}</span>
         </button>
       </div>
     </form>
