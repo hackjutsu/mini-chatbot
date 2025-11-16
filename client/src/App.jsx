@@ -20,6 +20,7 @@ import {
   fetchModels,
   fetchSessions,
   lookupUser,
+  logoutUser,
   publishCharacter,
   renameSession,
   streamChat,
@@ -367,6 +368,11 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    if (user?.userId) {
+      logoutUser(user.userId).catch((error) => {
+        console.warn('Failed to log logout event:', error);
+      });
+    }
     setUser(null);
     setSessions([]);
     setMessagesBySession({});

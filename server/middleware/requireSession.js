@@ -1,4 +1,5 @@
 const sessionService = require('../services/sessionService');
+const logger = require('../logger');
 
 const requireSessionForUser =
   (extractSessionId, missingMessage = 'sessionId is required.') =>
@@ -9,7 +10,7 @@ const requireSessionForUser =
     }
     const userId = req.user?.id;
     if (!userId) {
-      console.error('requireSessionForUser middleware requires req.user to be set.');
+      logger.error('middleware.requireSession.missingUser', { sessionId });
       return res.status(500).json({ error: 'Unable to load session context.' });
     }
     const session = await sessionService.findOwnedSession(sessionId, userId);

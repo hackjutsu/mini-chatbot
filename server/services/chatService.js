@@ -2,6 +2,7 @@ const { getMessagesForSession, addMessage } = require('../../db');
 const { maybeAutoTitleSession } = require('../helpers/sessionTitle');
 const { requestChatStream } = require('./ollamaService');
 const { OLLAMA_MODEL, SYSTEM_PROMPT } = require('../config');
+const logger = require('../logger');
 const characterService = require('./characterService');
 
 const buildConversationHistory = ({ sessionId, session, userId }) => {
@@ -67,9 +68,21 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
   outgoingMessages.push(...history, { role: 'user', content: trimmedContent });
 
   addMessage(sessionId, 'user', trimmedContent);
+  logger.debug('chat.message.userSaved', {
+    sessionId,
+    userId,
+    length: trimmedContent.length,
+  });
   maybeAutoTitleSession(session, userId, trimmedContent);
 
   const targetModel = user.preferredModel || OLLAMA_MODEL;
+  logger.info('chat.stream.start', {
+    sessionId,
+    userId,
+    characterId: session.characterId || null,
+    model: targetModel,
+    messageLength: trimmedContent.length,
+  });
 
   const abortController = new AbortController();
   const { cleanup, wasClientClosedEarly } = createAbortHandlers({ req, res, abortController });
@@ -108,7 +121,7 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
       try {
         res.write(`${JSON.stringify(payload)}\n`);
       } catch (error) {
-        console.error('Failed to write chunk to client:', error);
+        logger.error('chat.stream.writeFailure', { sessionId, userId, error: error?.message });
         throw error;
       }
     };
@@ -124,7 +137,7 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
         try {
           parsed = JSON.parse(line);
         } catch (error) {
-          console.warn('Skipping non-JSON chunk from Ollama:', line, error);
+          logger.warn('chat.stream.invalidChunk', { sessionId, userId, line, error: error?.message });
           continue;
         }
 
@@ -159,13 +172,18 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
     writeChunk({ type: 'done' });
     if (assistantContent.trim()) {
       addMessage(sessionId, 'assistant', assistantContent);
+      logger.debug('chat.message.assistantSaved', {
+        sessionId,
+        userId,
+        length: assistantContent.length,
+      });
     }
     res.end();
   } catch (error) {
     if (abortController.signal.aborted && wasClientClosedEarly()) {
-      console.warn('Client connection closed before response finished.');
+      logger.warn('chat.stream.clientClosed', { sessionId, userId });
     } else {
-      console.error('Error calling Ollama:', error);
+      logger.error('chat.stream.error', { sessionId, userId, error: error?.message });
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to contact Ollama' });
         return;
@@ -173,6 +191,13 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
       res.write(`${JSON.stringify({ type: 'error', message: 'Failed to contact Ollama' })}\n`);
       res.end();
     }
+    logger.info('chat.stream.complete', {
+      sessionId,
+      userId,
+      characterId: session.characterId || null,
+      model: targetModel,
+      responseLength: assistantContent.length,
+    });
   } finally {
     cleanup();
   }

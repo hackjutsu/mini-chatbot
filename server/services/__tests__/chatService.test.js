@@ -18,6 +18,13 @@ jest.mock('../../config', () => ({
 jest.mock('../characterService', () => ({
   getCharacterForUser: jest.fn(),
 }));
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
+jest.mock('../../logger', () => mockLogger);
 
 const { streamChatResponse } = require('../chatService');
 const { requestChatStream } = require('../ollamaService');
@@ -61,13 +68,7 @@ describe('streamChatResponse', () => {
     jest.clearAllMocks();
     mockDb.getMessagesForSession.mockReturnValue([]);
     mockDb.addMessage.mockReturnValue('msg-id');
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    console.error.mockRestore();
-    console.warn.mockRestore();
+    Object.values(mockLogger).forEach((fn) => fn.mockClear());
   });
 
   it('streams assistant responses and persists messages', async () => {

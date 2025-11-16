@@ -5,6 +5,7 @@ const {
   requireUserFromBodyOrQuery,
 } = require('../middleware/requireUser');
 const characterService = require('../services/characterService');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ router.post('/', requireUserFromBody(), (req, res) => {
     });
     return res.status(201).json({ character });
   } catch (error) {
-    console.error('Failed to create character:', error);
+    logger.error('characters.create.error', { userId, error: error?.message });
     return res.status(500).json({ error: 'Unable to create character.' });
   }
 });

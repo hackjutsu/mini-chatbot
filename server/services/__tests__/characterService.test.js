@@ -22,12 +22,19 @@ const mockCache = {
   delete: jest.fn(),
   wrap: jest.fn((key, ttl, loader) => loader()),
 };
+const mockLogger = {
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
 
 jest.mock('../../../db', () => mockDb);
 jest.mock('../../cache', () => mockCache);
 jest.mock('../../cache/keys', () => ({
   publishedCharacterKey: (id) => `character:published:${id}`,
 }));
+jest.mock('../../logger', () => mockLogger);
 
 const characterService = require('../characterService');
 
@@ -40,6 +47,7 @@ describe('characterService', () => {
     mockCache.wrap.mockClear();
     mockCache.get.mockReturnValue(null);
     mockCache.wrap.mockImplementation((key, ttl, loader) => loader());
+    Object.values(mockLogger).forEach((fn) => fn.mockClear());
   });
 
   describe('listOwned', () => {

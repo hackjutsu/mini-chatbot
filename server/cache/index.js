@@ -1,5 +1,6 @@
 const { CACHE_PROVIDER } = require('../config');
 const { createMemoryCache } = require('./providers/memoryCache');
+const logger = require('../logger');
 
 const providers = {
   memory: createMemoryCache(),
@@ -10,7 +11,7 @@ const resolveProvider = () => {
   if (providers[key]) {
     return providers[key];
   }
-  console.warn(`Unknown cache provider "${CACHE_PROVIDER}", falling back to in-memory cache.`);
+  logger.warn('cache.provider.unknown', { provider: CACHE_PROVIDER });
   return providers.memory;
 };
 
