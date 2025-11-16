@@ -519,8 +519,9 @@ body {
 }
 
 .share-modal {
-  width: min(520px, 100%);
+  width: min(640px, 100%);
   max-height: 90vh;
+  min-height: min(640px, 90vh);
   background: #fff;
   border-radius: 24px;
   padding: 28px;
@@ -566,7 +567,6 @@ body {
 }
 
 .share-preview {
-  max-height: 180px;
   overflow-y: auto;
   background: #f8fafc;
   border-radius: 12px;
@@ -579,10 +579,11 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
+  margin-top: auto;
 }
 
 .share-option {
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 12px;
   padding: 12px 10px;
   background: #fefefe;
@@ -805,6 +806,7 @@ body {
   position: relative;
   width: min(1000px, 95vw);
   max-height: 90vh;
+  min-height: 90vh;
   background: var(--surface);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -838,6 +840,7 @@ body {
   gap: 18px;
   overflow-y: auto;
   padding-right: 4px;
+  flex: 1;
 }
 
 .character-picker__section {
@@ -848,6 +851,10 @@ body {
   border-radius: 14px;
   border: 1px solid var(--border);
   background: rgba(248, 250, 252, 0.85);
+}
+
+.character-picker__section--collapsed {
+  padding-bottom: 12px;
 }
 
 .character-picker__section h3 {
@@ -864,6 +871,37 @@ body {
   gap: 12px;
 }
 
+.character-picker__section-body {
+  transition: max-height 200ms ease, opacity 150ms ease;
+  max-height: 1200px;
+  overflow: hidden;
+}
+
+.character-picker__section-body.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.character-picker__section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.character-picker__caret {
+  font-size: 1.4rem;
+  color: var(--muted);
+}
+
 .character-picker__section--marketplace {
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(14, 165, 233, 0.08));
   border-color: rgba(79, 70, 229, 0.25);
@@ -877,6 +915,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+  padding-top: 4px;
 }
 
 @media (max-width: 960px) {
@@ -896,6 +935,7 @@ body {
   cursor: pointer;
   transform: translateY(0);
   transition: border-color 120ms ease, transform 150ms ease;
+  border: 1px solid var(--border);
 }
 
 .picker-card.is-selected {

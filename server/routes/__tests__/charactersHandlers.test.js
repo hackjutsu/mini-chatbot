@@ -87,7 +87,7 @@ describe('characters router handlers', () => {
     const req = {
       user: { id: 'user-1' },
       params: { characterId: 'char-1' },
-      body: { name: 'Nova', prompt: 'Prompt', avatarUrl: null },
+      body: { name: 'Nova', prompt: 'Prompt', shortDescription: 'Helper', avatarUrl: null },
     };
     const res = createRes();
     mockCharacterService.updateForUser.mockReturnValue({ id: 'char-1', name: 'Nova' });

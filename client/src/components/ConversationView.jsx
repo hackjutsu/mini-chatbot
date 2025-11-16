@@ -5,6 +5,7 @@ import ShareMessageModal from './ShareMessageModal.jsx';
 
 const CharacterBanner = ({ character }) => {
   if (!character) return null;
+  const summary = character.shortDescription?.trim() || null;
   return (
     <div className="character-banner">
       {character.avatarUrl ? (
@@ -14,7 +15,7 @@ const CharacterBanner = ({ character }) => {
       )}
       <div>
         <strong>{character.name}</strong>
-        <p className="character-meta">{character.prompt}</p>
+        {summary ? <p className="character-meta">{summary}</p> : null}
       </div>
     </div>
   );
