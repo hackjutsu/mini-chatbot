@@ -6,6 +6,8 @@ const StatusBadge = ({ status }) => {
 const CharacterCard = ({ character, ownerLabel, isSelected, onSelect }) => {
   const avatar = character.avatarUrl || '/avatars/default.svg';
   const selectionValue = character.id ?? null;
+  const summary = character.shortDescription?.trim();
+  const description = summary || 'No description yet.';
 
   return (
     <div
@@ -31,7 +33,7 @@ const CharacterCard = ({ character, ownerLabel, isSelected, onSelect }) => {
         </div>
       </div>
       <div className="character-summary__meta-row">
-        <p className="character-summary__meta">{character.shortDescription || character.prompt}</p>
+        <p className="character-summary__meta">{description}</p>
         <span className="character-summary__owner">By {ownerLabel}</span>
       </div>
     </div>
@@ -83,7 +85,7 @@ const CharacterPicker = ({
 
         <div className="character-picker__groups">
 
-          <section className="character-picker__section">
+          <section className="character-picker__section character-picker__section--marketplace">
             <div className="character-picker__section-header">
               <div>
                 <h3>Marketplace</h3>
