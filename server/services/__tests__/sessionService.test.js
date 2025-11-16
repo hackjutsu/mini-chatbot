@@ -49,6 +49,11 @@ describe('sessionService', () => {
           messageCount: 3,
         },
       ]);
+      mockCharacterService.getCharacterForUser.mockReturnValue({
+        id: 'char-1',
+        name: 'Nova',
+        prompt: 'Shine',
+      });
 
       const result = sessionService.listForUser('user-1');
 
