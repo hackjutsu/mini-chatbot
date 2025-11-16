@@ -118,6 +118,7 @@ const needsCharacterTableMigration = requiredCharacterColumns.some(
 );
 
 if (needsCharacterTableMigration) {
+  db.exec('PRAGMA foreign_keys = OFF');
   db.exec('BEGIN TRANSACTION');
   db.exec(`
     CREATE TABLE characters_new (
@@ -166,6 +167,7 @@ if (needsCharacterTableMigration) {
   db.exec('DROP TABLE characters');
   db.exec('ALTER TABLE characters_new RENAME TO characters');
   db.exec('COMMIT');
+  db.exec('PRAGMA foreign_keys = ON');
 }
 
 const sessionTableInfo = db.prepare('PRAGMA table_info(sessions)').all();
@@ -378,6 +380,24 @@ const statements = {
     WHERE p.user_id = ?
     ORDER BY p.created_at ASC`
   ),
+  findPinnedCharacterForUser: db.prepare(
+    `SELECT
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt,
+      p.created_at AS pinnedAt
+    FROM character_pins p
+    JOIN characters c ON c.id = p.character_id
+    WHERE p.user_id = ? AND p.character_id = ?`
+  ),
   findCharacterPin: db.prepare(
     'SELECT user_id AS userId, character_id AS characterId FROM character_pins WHERE user_id = ? AND character_id = ?'
   ),
@@ -508,6 +528,9 @@ const getPublishedCharacters = () => statements.findPublishedCharacters.all(CHAR
 
 const getCharactersPinnedByUser = (userId) => statements.findPinnedCharactersByUser.all(userId);
 
+const getPinnedCharacterForUser = (userId, characterId) =>
+  statements.findPinnedCharacterForUser.get(userId, characterId) || null;
+
 const pinCharacterForUser = (userId, characterId) => {
   statements.insertCharacterPin.run(userId, characterId);
   return true;
@@ -573,6 +596,7 @@ module.exports = {
   getCharacterById,
   getPublishedCharacters,
   getCharactersPinnedByUser,
+  getPinnedCharacterForUser,
   pinCharacterForUser,
   unpinCharacterForUser,
   isCharacterPinnedByUser,

@@ -1,12 +1,13 @@
-const { getCharacterOwnedByUser, getMessagesForSession, addMessage } = require('../../db');
+const { getMessagesForSession, addMessage } = require('../../db');
 const { maybeAutoTitleSession } = require('../helpers/sessionTitle');
 const { requestChatStream } = require('./ollamaService');
 const { OLLAMA_MODEL, SYSTEM_PROMPT } = require('../config');
+const characterService = require('./characterService');
 
 const buildConversationHistory = ({ sessionId, session, userId }) => {
   let characterPrompt = null;
   if (session.characterId) {
-    const character = getCharacterOwnedByUser(session.characterId, userId);
+    const character = characterService.getCharacterForUser(session.characterId, userId);
     characterPrompt = character?.prompt || null;
   }
 

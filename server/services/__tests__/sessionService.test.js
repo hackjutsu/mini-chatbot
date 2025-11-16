@@ -2,8 +2,8 @@ const mockDb = {
   DEFAULT_SESSION_TITLE: 'New chat',
   createSession: jest.fn(),
   getSessionsForUser: jest.fn(),
-  getCharacterOwnedByUser: jest.fn(),
   getCharactersForUser: jest.fn(),
+  getCharactersPinnedByUser: jest.fn(),
   getMessagesForSession: jest.fn(),
   updateSessionTitle: jest.fn(),
   removeSession: jest.fn(),
@@ -11,6 +11,12 @@ const mockDb = {
 };
 
 jest.mock('../../../db', () => mockDb);
+
+const mockCharacterService = {
+  getCharacterForUser: jest.fn(),
+};
+
+jest.mock('../characterService', () => mockCharacterService);
 
 const sessionService = require('../sessionService');
 
@@ -31,6 +37,7 @@ describe('sessionService', () => {
           updatedAt: '2024-01-01',
         },
       ]);
+      mockDb.getCharactersPinnedByUser.mockReturnValue([]);
       mockDb.getSessionsForUser.mockReturnValue([
         {
           id: 'sess-1',
@@ -53,14 +60,11 @@ describe('sessionService', () => {
           updatedAt: '2024-02-01',
           messageCount: 3,
           characterId: 'char-1',
-          character: {
+          character: expect.objectContaining({
             id: 'char-1',
             name: 'Nova',
             prompt: 'Shine',
-            avatarUrl: '/nova.svg',
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
+          }),
         },
       ]);
     });
@@ -68,7 +72,7 @@ describe('sessionService', () => {
 
   describe('createForUser', () => {
     it('throws when character is missing', () => {
-      mockDb.getCharacterOwnedByUser.mockReturnValue(null);
+      mockCharacterService.getCharacterForUser.mockReturnValue(null);
 
       expect(() =>
         sessionService.createForUser('user-1', { title: 'Greetings', characterId: 'missing' })
@@ -76,7 +80,7 @@ describe('sessionService', () => {
     });
 
     it('creates session and returns formatted payload', () => {
-      mockDb.getCharacterOwnedByUser.mockReturnValue({
+      mockCharacterService.getCharacterForUser.mockReturnValue({
         id: 'char-1',
         name: 'Nova',
         prompt: 'Shine',
@@ -102,14 +106,7 @@ describe('sessionService', () => {
         updatedAt: '2024-02-01',
         messageCount: 0,
         characterId: 'char-1',
-        character: {
-          id: 'char-1',
-          name: 'Nova',
-          prompt: 'Shine',
-          avatarUrl: '/nova.svg',
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
-        },
+        character: expect.objectContaining({ id: 'char-1', name: 'Nova' }),
       });
     });
 
@@ -131,13 +128,10 @@ describe('sessionService', () => {
 
   describe('getTranscriptForSession', () => {
     it('returns session DTO with messages', () => {
-      mockDb.getCharacterOwnedByUser.mockReturnValue({
+      mockCharacterService.getCharacterForUser.mockReturnValue({
         id: 'char-1',
         name: 'Nova',
         prompt: 'Shine',
-        avatarUrl: '/nova.svg',
-        createdAt: '2024-01-01',
-        updatedAt: '2024-01-01',
       });
       mockDb.getMessagesForSession.mockReturnValue([
         { id: 'm1', role: 'user', content: 'Hello', createdAt: '2024-04-01' },
@@ -177,6 +171,7 @@ describe('sessionService', () => {
         createdAt: '2024-02-01',
         updatedAt: '2024-02-02',
       });
+      mockCharacterService.getCharacterForUser.mockReturnValue(null);
 
       const result = sessionService.renameSession('sess-1', 'user-1', 'Updated');
 
