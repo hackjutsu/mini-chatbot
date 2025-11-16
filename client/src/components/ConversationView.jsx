@@ -63,6 +63,7 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
   const showIndicator = Boolean(message.isStreaming);
   const indicatorClasses = `thinking-indicator${hasContent ? ' message-think-indicator' : ''}`;
   const timestampLabel = isAssistant ? formatTimestamp(message.createdAt) : null;
+  const showMetaRow = showActions || timestampLabel;
 
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
@@ -75,7 +76,6 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
         ) : (
           message.content
         )}
-        {showActions ? <MessageActionBar message={message} onShare={onShare} /> : null}
         {showIndicator ? (
           <div className={indicatorClasses} aria-label="Generating response">
             <span></span>
@@ -83,7 +83,12 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
             <span></span>
           </div>
         ) : null}
-        {timestampLabel ? <div className="message-timestamp">{timestampLabel}</div> : null}
+        {showMetaRow ? (
+          <div className="message-meta-row">
+            {showActions ? <MessageActionBar message={message} onShare={onShare} /> : null}
+            {timestampLabel ? <div className="message-timestamp">{timestampLabel}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

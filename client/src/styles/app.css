@@ -371,11 +371,19 @@ body {
   font-size: 0.92rem;
 }
 
-.message-timestamp {
+.message-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 6px;
+}
+
+.message-timestamp {
+  margin-top: 0;
   font-size: 0.75rem;
   color: var(--muted);
   text-align: right;
+  margin-left: auto;
 }
 
 .message-body pre {
