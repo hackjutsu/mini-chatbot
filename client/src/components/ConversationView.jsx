@@ -3,6 +3,19 @@ import { renderMarkdown } from '../utils/markdown.js';
 import MessageActionBar from './MessageActionBar.jsx';
 import ShareMessageModal from './ShareMessageModal.jsx';
 
+const formatTimestamp = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const CharacterBanner = ({ character }) => {
   if (!character) return null;
   const summary = character.shortDescription?.trim() || null;
@@ -49,6 +62,7 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
   const showActions = isAssistant && hasContent && !message.isStreaming;
   const showIndicator = Boolean(message.isStreaming);
   const indicatorClasses = `thinking-indicator${hasContent ? ' message-think-indicator' : ''}`;
+  const timestampLabel = isAssistant ? formatTimestamp(message.createdAt) : null;
 
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
@@ -69,6 +83,7 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
             <span></span>
           </div>
         ) : null}
+        {timestampLabel ? <div className="message-timestamp">{timestampLabel}</div> : null}
       </div>
     </div>
   );
