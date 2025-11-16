@@ -3,6 +3,13 @@ const mockDb = {
 };
 
 jest.mock('../../../db', () => mockDb);
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
+jest.mock('../../logger', () => mockLogger);
 
 const { requireSessionForUser } = require('../requireSession');
 
@@ -16,11 +23,7 @@ const createMockRes = () => {
 describe('requireSessionForUser', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    console.error.mockRestore();
+    Object.values(mockLogger).forEach((fn) => fn.mockClear());
   });
 
   it('returns 400 when sessionId missing', async () => {

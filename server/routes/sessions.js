@@ -6,6 +6,7 @@ const {
 } = require('../middleware/requireUser');
 const { requireSessionForUser } = require('../middleware/requireSession');
 const sessionService = require('../services/sessionService');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.post('/', requireUserFromBody(), (req, res) => {
     if (error.code === sessionService.CHARACTER_NOT_FOUND) {
       return res.status(400).json({ error: 'Character not found for user.' });
     }
-    console.error('Failed to create session:', error);
+    logger.error('sessions.create.error', { userId, error: error?.message });
     return res.status(500).json({ error: 'Unable to create session.' });
   }
 });

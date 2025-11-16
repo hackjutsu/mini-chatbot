@@ -5,6 +5,7 @@ const { OLLAMA_MODEL } = require('../config');
 const { fetchAvailableModels } = require('../services/ollamaService');
 const { requireUserFromParam } = require('../middleware/requireUser');
 const userService = require('../services/userService');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.post('/', (req, res) => {
     const user = userService.createUser(username.trim(), OLLAMA_MODEL);
     return res.status(201).json(formatUserPayload(user, OLLAMA_MODEL));
   } catch (error) {
-    console.error('Failed to create user:', error);
+    logger.error('users.create.error', { username, error: error?.message });
     return res.status(500).json({ error: 'Unable to create user.' });
   }
 });
@@ -47,7 +48,7 @@ router.patch(
       userService.setPreferredModel(userId, model);
       return res.json({ model });
     } catch (error) {
-      console.error('Failed to update user model:', error);
+      logger.error('users.updateModel.error', { userId, error: error?.message });
       return res.status(502).json({ error: 'Unable to update model preference.' });
     }
   }
@@ -62,7 +63,13 @@ router.get('/:username', (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
+  logger.debug('users.login', { userId: user.id, username });
   return res.json(formatUserPayload(user, OLLAMA_MODEL));
+});
+
+router.post('/:userId/logout', requireUserFromParam('userId'), (req, res) => {
+  logger.debug('users.logout', { userId: req.user.id });
+  return res.status(204).end();
 });
 
 module.exports = router;
