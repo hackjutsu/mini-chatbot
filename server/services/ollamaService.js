@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const { OLLAMA_CHAT_URL, OLLAMA_MODEL } = require('../config');
+const logger = require('../logger');
 
 let UndiciAgent;
 try {
@@ -30,7 +31,7 @@ try {
   parsedOllamaUrl = new URL(OLLAMA_CHAT_URL);
   isOllamaHttps = parsedOllamaUrl.protocol === 'https:';
 } catch (error) {
-  console.warn('Invalid OLLAMA_CHAT_URL provided, defaulting to HTTP keep-alive agent.', error);
+  logger.warn('ollama.invalidUrl', { error: error?.message });
 }
 
 const DEFAULT_OLLAMA_BASE = 'http://localhost:11434';
@@ -77,7 +78,7 @@ const fetchAvailableModels = async () => {
     cachedModels = { list: finalList, timestamp: Date.now() };
     return finalList;
   } catch (error) {
-    console.warn('Unable to load models from Ollama:', error);
+    logger.warn('ollama.fetchModels.error', { error: error?.message });
     if (cachedModels.list) {
       return cachedModels.list;
     }

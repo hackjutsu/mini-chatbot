@@ -2,6 +2,7 @@ const express = require('express');
 const { fetchAvailableModels, resolveUserModel } = require('../services/ollamaService');
 const { requireUserFromQuery } = require('../middleware/requireUser');
 const userService = require('../services/userService');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.get('/', requireUserFromQuery(), async (req, res) => {
       selectedModel,
     });
   } catch (error) {
-    console.error('Failed to load models list:', error);
+    logger.error('models.list.error', { userId, error: error?.message });
     return res.status(502).json({ error: 'Unable to load model list from Ollama.' });
   }
 });
