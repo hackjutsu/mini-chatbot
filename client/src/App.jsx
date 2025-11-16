@@ -20,11 +20,9 @@ import {
   fetchModels,
   fetchSessions,
   lookupUser,
-  pinCharacter,
   publishCharacter,
   renameSession,
   streamChat,
-  unpinCharacter,
   updateCharacter,
   updateUserModel,
   unpublishCharacter,
@@ -116,36 +114,33 @@ const App = () => {
     error: '',
   });
   const defaultCharacterRef = useRef(activeCharacterId);
-  const availableCharacters = useMemo(() => {
+  const ownedCharacters = characterLibrary.owned;
+  const selectableCharacters = useMemo(() => {
     const lookup = new Map();
-    characterLibrary.pinned.forEach((character) => {
-      lookup.set(character.id, { ...character });
-    });
-    characterLibrary.owned.forEach((character) => {
+    ownedCharacters.forEach((character) => lookup.set(character.id, { ...character }));
+    publishedCharacters.forEach((character) => {
       if (!lookup.has(character.id)) {
         lookup.set(character.id, { ...character });
       }
     });
     return Array.from(lookup.values());
-  }, [characterLibrary]);
-  const pinnedCharacters = characterLibrary.pinned;
-  const ownedCharacters = characterLibrary.owned;
+  }, [ownedCharacters, publishedCharacters]);
 
   useEffect(() => {
     defaultCharacterRef.current = activeCharacterId;
   }, [activeCharacterId]);
 
   useEffect(() => {
-    if (activeCharacterId && !availableCharacters.some((character) => character.id === activeCharacterId)) {
+    if (activeCharacterId && !selectableCharacters.some((character) => character.id === activeCharacterId)) {
       setActiveCharacterId(null);
     }
-  }, [activeCharacterId, availableCharacters]);
+  }, [activeCharacterId, selectableCharacters]);
 
   useEffect(() => {
-    if (pickerSelection && !availableCharacters.some((character) => character.id === pickerSelection)) {
+    if (pickerSelection && !selectableCharacters.some((character) => character.id === pickerSelection)) {
       setPickerSelection(null);
     }
-  }, [pickerSelection, availableCharacters]);
+  }, [pickerSelection, selectableCharacters]);
 
   useEffect(() => {
     if (!user) {
@@ -603,36 +598,6 @@ const App = () => {
     }
   };
 
-  const handlePinCharacter = async (character) => {
-    if (!user) return;
-    setGlobalError('');
-    try {
-      await pinCharacter(user.userId, character.id);
-      await refreshCharacterLibrary();
-    } catch (error) {
-      console.error('Unable to pin character:', error);
-      setGlobalError(error.message || 'Failed to pin character.');
-    }
-  };
-
-  const handleUnpinCharacter = async (character) => {
-    if (!user) return;
-    setGlobalError('');
-    try {
-      await unpinCharacter(user.userId, character.id);
-      if (activeCharacterId === character.id) {
-        setActiveCharacterId(null);
-      }
-      if (pickerSelection === character.id) {
-        setPickerSelection(null);
-      }
-      await refreshCharacterLibrary();
-    } catch (error) {
-      console.error('Unable to unpin character:', error);
-      setGlobalError(error.message || 'Failed to unpin character.');
-    }
-  };
-
   const openCharacterManager = () => {
     if (!user) return;
     setCharacterManagerOpen(true);
@@ -838,29 +803,25 @@ const App = () => {
     </div>
       <CharacterPicker
         isOpen={pickerOpen}
-        characters={availableCharacters}
-        pinnedCharacters={pinnedCharacters}
-        ownedCharacters={ownedCharacters}
+        owned={ownedCharacters}
+        marketplace={publishedCharacters}
         selectedCharacterId={pickerSelection}
         onSelect={setPickerSelection}
         onClose={closeCharacterPicker}
         onConfirm={handleStartConversation}
-        onManage={openCharacterManager}
         isSubmitting={isStartingChat}
+        currentUserId={user?.userId || null}
+        currentUsername={user?.username || null}
       />
       <CharacterManager
         isOpen={isCharacterManagerOpen}
         owned={ownedCharacters}
-        pinned={pinnedCharacters}
-        published={publishedCharacters}
         onClose={closeCharacterManager}
         onCreate={() => openCharacterForm('create')}
         onEdit={handleEditCharacter}
         onPublish={handlePublishCharacter}
         onUnpublish={handleUnpublishCharacter}
         onDelete={handleDeleteCharacter}
-        onPin={handlePinCharacter}
-        onUnpin={handleUnpinCharacter}
       />
       <CharacterFormModal
         isOpen={characterFormState.isOpen}

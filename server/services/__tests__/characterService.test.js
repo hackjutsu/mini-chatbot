@@ -36,6 +36,7 @@ describe('characterService', () => {
         {
           id: 'c1',
           ownerUserId: 'owner',
+          ownerUsername: 'Owner',
           name: 'Nova',
           prompt: 'Be bright',
           avatarUrl: '/nova.svg',
@@ -51,6 +52,7 @@ describe('characterService', () => {
         {
           id: 'c1',
           ownerUserId: 'owner',
+          ownerUsername: 'Owner',
           name: 'Nova',
           prompt: 'Be bright',
           avatarUrl: '/nova.svg',
@@ -72,6 +74,7 @@ describe('characterService', () => {
         {
           id: 'c2',
           ownerUserId: 'another',
+          ownerUsername: 'Another',
           name: 'Chef',
           prompt: 'Cook things',
           pinnedAt: '2024-02-02',
@@ -90,7 +93,7 @@ describe('characterService', () => {
 
   describe('listPublished', () => {
     it('returns published characters', () => {
-      mockDb.getPublishedCharacters.mockReturnValue([{ id: 'c3', ownerUserId: 'owner' }]);
+      mockDb.getPublishedCharacters.mockReturnValue([{ id: 'c3', ownerUserId: 'owner', ownerUsername: 'Owner' }]);
 
       const result = characterService.listPublished();
 
@@ -104,6 +107,7 @@ describe('characterService', () => {
       mockDb.createCharacter.mockReturnValue({
         id: 'c2',
         ownerUserId: 'u1',
+        ownerUsername: 'me',
         name: 'Chef',
         prompt: 'Cook things',
         avatarUrl: null,
@@ -123,6 +127,7 @@ describe('characterService', () => {
       mockDb.updateCharacter.mockReturnValue({
         id: 'c1',
         ownerUserId: 'u1',
+        ownerUsername: 'me',
         name: 'Updated',
         prompt: 'New prompt',
         avatarUrl: '/new.svg',
@@ -147,14 +152,14 @@ describe('characterService', () => {
 
   describe('publish/unpublish', () => {
     it('publishes a character for the owner', () => {
-      mockDb.publishCharacter.mockReturnValue({ id: 'c1', ownerUserId: 'u1', status: 'published' });
+      mockDb.publishCharacter.mockReturnValue({ id: 'c1', ownerUserId: 'u1', ownerUsername: 'me', status: 'published' });
       const result = characterService.publishForUser('c1', 'u1');
       expect(mockDb.publishCharacter).toHaveBeenCalledWith('c1', 'u1');
       expect(result).toMatchObject({ id: 'c1', status: 'published' });
     });
 
     it('unpublishes a character for the owner', () => {
-      mockDb.unpublishCharacter.mockReturnValue({ id: 'c1', ownerUserId: 'u1', status: 'draft' });
+      mockDb.unpublishCharacter.mockReturnValue({ id: 'c1', ownerUserId: 'u1', ownerUsername: 'me', status: 'draft' });
       const result = characterService.unpublishForUser('c1', 'u1');
       expect(mockDb.unpublishCharacter).toHaveBeenCalledWith('c1', 'u1');
       expect(result).toMatchObject({ id: 'c1', status: 'draft' });
@@ -163,7 +168,7 @@ describe('characterService', () => {
 
   describe('getCharacterForUser', () => {
     it('returns owned characters', () => {
-      mockDb.getCharacterOwnedByUser.mockReturnValue({ id: 'c1', ownerUserId: 'u1' });
+      mockDb.getCharacterOwnedByUser.mockReturnValue({ id: 'c1', ownerUserId: 'u1', ownerUsername: 'me' });
 
       const result = characterService.getCharacterForUser('c1', 'u1');
 
@@ -173,11 +178,12 @@ describe('characterService', () => {
 
     it('returns pinned published characters', () => {
       mockDb.getCharacterOwnedByUser.mockReturnValue(null);
-      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'another', status: CHARACTER_STATUS.PUBLISHED });
+      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'another', ownerUsername: 'Another', status: CHARACTER_STATUS.PUBLISHED });
       mockDb.isCharacterPinnedByUser.mockReturnValue(true);
       mockDb.getPinnedCharacterForUser.mockReturnValue({
         id: 'c2',
         ownerUserId: 'another',
+        ownerUsername: 'Another',
         status: CHARACTER_STATUS.PUBLISHED,
         pinnedAt: '2024-02-02',
       });
@@ -189,7 +195,7 @@ describe('characterService', () => {
 
     it('returns null when character not published or pinned', () => {
       mockDb.getCharacterOwnedByUser.mockReturnValue(null);
-      mockDb.getCharacterById.mockReturnValue({ id: 'c3', ownerUserId: 'another', status: CHARACTER_STATUS.DRAFT });
+      mockDb.getCharacterById.mockReturnValue({ id: 'c3', ownerUserId: 'another', ownerUsername: 'Another', status: CHARACTER_STATUS.DRAFT });
 
       const result = characterService.getCharacterForUser('c3', 'user-1');
 
@@ -199,10 +205,11 @@ describe('characterService', () => {
 
   describe('pinForUser', () => {
     it('pins a published character', () => {
-      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'owner', status: CHARACTER_STATUS.PUBLISHED });
+      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'owner', ownerUsername: 'Owner', status: CHARACTER_STATUS.PUBLISHED });
       mockDb.getPinnedCharacterForUser.mockReturnValue({
         id: 'c2',
         ownerUserId: 'owner',
+        ownerUsername: 'Owner',
         status: CHARACTER_STATUS.PUBLISHED,
         pinnedAt: '2024-02-02',
       });
@@ -214,7 +221,7 @@ describe('characterService', () => {
     });
 
     it('throws when character not published for non-owner', () => {
-      mockDb.getCharacterById.mockReturnValue({ id: 'c4', ownerUserId: 'owner', status: CHARACTER_STATUS.DRAFT });
+      mockDb.getCharacterById.mockReturnValue({ id: 'c4', ownerUserId: 'owner', ownerUsername: 'Owner', status: CHARACTER_STATUS.DRAFT });
 
       expect(() => characterService.pinForUser('c4', 'user-2')).toThrow('Character is not published.');
     });

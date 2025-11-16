@@ -5,6 +5,7 @@ const formatCharacterPayload = (character) => {
   return {
     id: character.id,
     ownerUserId: character.ownerUserId,
+    ownerUsername: character.ownerUsername || null,
     name: character.name,
     prompt: character.prompt,
     avatarUrl: character.avatarUrl || null,

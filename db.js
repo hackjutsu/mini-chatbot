@@ -254,88 +254,98 @@ const statements = {
   ),
   findCharactersByOwner: db.prepare(
     `SELECT
-      id,
-      owner_user_id AS ownerUserId,
-      name,
-      prompt,
-      avatar_url AS avatarUrl,
-      short_description AS shortDescription,
-      status,
-      version,
-      last_published_at AS lastPublishedAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM characters
-    WHERE owner_user_id = ?
-    ORDER BY updated_at DESC`
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt
+    FROM characters c
+    JOIN users u ON u.id = c.owner_user_id
+    WHERE c.owner_user_id = ?
+    ORDER BY c.updated_at DESC`
   ),
   findCharacterByOwnerAndName: db.prepare(
     `SELECT
-      id,
-      owner_user_id AS ownerUserId,
-      name,
-      prompt,
-      avatar_url AS avatarUrl,
-      short_description AS shortDescription,
-      status,
-      version,
-      last_published_at AS lastPublishedAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM characters
-    WHERE owner_user_id = ? AND name = ?`
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt
+    FROM characters c
+    JOIN users u ON u.id = c.owner_user_id
+    WHERE c.owner_user_id = ? AND c.name = ?`
   ),
   findPublishedCharacters: db.prepare(
     `SELECT
-      id,
-      owner_user_id AS ownerUserId,
-      name,
-      prompt,
-      avatar_url AS avatarUrl,
-      short_description AS shortDescription,
-      status,
-      version,
-      last_published_at AS lastPublishedAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM characters
-    WHERE status = ?
-    ORDER BY updated_at DESC`
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt
+    FROM characters c
+    JOIN users u ON u.id = c.owner_user_id
+    WHERE c.status = ?
+    ORDER BY c.updated_at DESC`
   ),
   findPublishedCharacterIdsByOwner: db.prepare(
     'SELECT id FROM characters WHERE owner_user_id = ? AND status = ? ORDER BY updated_at DESC'
   ),
   findCharacterById: db.prepare(
     `SELECT
-      id,
-      owner_user_id AS ownerUserId,
-      name,
-      prompt,
-      avatar_url AS avatarUrl,
-      short_description AS shortDescription,
-      status,
-      version,
-      last_published_at AS lastPublishedAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM characters
-    WHERE id = ?`
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt
+    FROM characters c
+    JOIN users u ON u.id = c.owner_user_id
+    WHERE c.id = ?`
   ),
   findCharacterByOwnership: db.prepare(
     `SELECT
-      id,
-      owner_user_id AS ownerUserId,
-      name,
-      prompt,
-      avatar_url AS avatarUrl,
-      short_description AS shortDescription,
-      status,
-      version,
-      last_published_at AS lastPublishedAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM characters
-    WHERE id = ? AND owner_user_id = ?`
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt
+    FROM characters c
+    JOIN users u ON u.id = c.owner_user_id
+    WHERE c.id = ? AND c.owner_user_id = ?`
   ),
   updateCharacter: db.prepare(
     `UPDATE characters
@@ -365,6 +375,7 @@ const statements = {
     `SELECT
       c.id,
       c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
       c.name,
       c.prompt,
       c.avatar_url AS avatarUrl,
@@ -377,6 +388,7 @@ const statements = {
       p.created_at AS pinnedAt
     FROM character_pins p
     JOIN characters c ON c.id = p.character_id
+    JOIN users u ON u.id = c.owner_user_id
     WHERE p.user_id = ?
     ORDER BY p.created_at ASC`
   ),
@@ -384,6 +396,7 @@ const statements = {
     `SELECT
       c.id,
       c.owner_user_id AS ownerUserId,
+      u.username AS ownerUsername,
       c.name,
       c.prompt,
       c.avatar_url AS avatarUrl,
@@ -396,6 +409,7 @@ const statements = {
       p.created_at AS pinnedAt
     FROM character_pins p
     JOIN characters c ON c.id = p.character_id
+    JOIN users u ON u.id = c.owner_user_id
     WHERE p.user_id = ? AND p.character_id = ?`
   ),
   findCharacterPin: db.prepare(

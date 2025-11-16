@@ -785,7 +785,7 @@ body {
 
 .character-picker__panel {
   position: relative;
-  width: min(620px, 95vw);
+  width: min(1000px, 95vw);
   max-height: 90vh;
   background: var(--surface);
   border-radius: 12px;
@@ -822,59 +822,57 @@ body {
   padding-right: 4px;
 }
 
-.character-picker__group h3 {
-  margin: 0 0 8px;
+.character-picker__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.character-picker__section h3 {
+  margin: 0;
   font-size: 0.95rem;
   color: var(--muted);
   font-weight: 600;
 }
 
-.character-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-}
-
-.character-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: #fafbff;
-}
-
-.character-row input[type='radio'] {
-  width: 18px;
-  height: 18px;
-}
-
-.character-details {
-  cursor: default;
-}
-
-.character-picker__footer {
+.character-picker__section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-.character-picker__caption {
-  font-size: 0.85rem;
-  color: var(--muted);
-  max-width: 60%;
+.character-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.character-picker__actions {
+@media (max-width: 960px) {
+  .character-picker__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .character-picker__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.picker-card {
+  position: relative;
+  cursor: pointer;
+}
+
+.picker-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.2);
+}
+
+.character-picker__footer {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  justify-content: flex-end;
 }
 
 .character-picker__primary {
@@ -1079,10 +1077,23 @@ body {
 
 .character-summary__heading-wrapper {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
   width: 100%;
+}
+
+.character-summary__meta-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.character-summary__owner {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .character-manager__actions {
