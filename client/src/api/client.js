@@ -104,6 +104,11 @@ export const updateUserModel = (userId, model) =>
     body: { model },
   });
 
+export const logoutUser = (userId) =>
+  request(`/api/users/${userId}/logout`, {
+    method: 'POST',
+  });
+
 export const fetchSessions = (userId) =>
   requireJson(`/api/sessions?${new URLSearchParams({ userId }).toString()}`);
 
