@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey.js';
 
 const StatusBadge = ({ status }) => {
   if (status !== 'draft') return null;
@@ -56,8 +57,10 @@ const CharacterPicker = ({
   currentUserId,
   currentUsername,
 }) => {
-  if (!isOpen) return null;
   const [sectionsOpen, setSectionsOpen] = useState({ marketplace: true, owned: true });
+  useEscapeKey(() => onClose?.(), isOpen);
+
+  if (!isOpen) return null;
 
   const getOwnerLabel = (character) => {
     if (character.ownerUserId && character.ownerUserId === currentUserId) {

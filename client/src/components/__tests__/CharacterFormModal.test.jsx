@@ -45,4 +45,12 @@ describe('CharacterFormModal', () => {
       avatarUrl: avatarInputs[1].value,
     });
   });
+
+  it('invokes cancel when Escape is pressed', () => {
+    render(<CharacterFormModal {...baseProps} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(baseProps.onCancel).toHaveBeenCalled();
+  });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey.js';
 
 const presetAvatars = [
   { id: 'default', label: 'Grey profile', url: '/avatars/default.svg' },
@@ -36,6 +37,7 @@ const CharacterFormModal = ({
   const [formState, setFormState] = useState(emptyState);
   const [avatarOptions, setAvatarOptions] = useState(presetAvatars);
   const [fieldErrors, setFieldErrors] = useState({ name: '', shortDescription: '', prompt: '' });
+  useEscapeKey(() => onCancel?.(), isOpen);
 
   useEffect(() => {
     if (isOpen) {
