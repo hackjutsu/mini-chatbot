@@ -32,6 +32,7 @@ const STORAGE_KEYS = {
   user: 'miniChatbot:user',
   activeSession: 'miniChatbot:activeSession',
   activeCharacter: 'miniChatbot:activeCharacter',
+  theme: 'miniChatbot:theme',
 };
 const DEFAULT_TITLE = 'New chat';
 const INTRO_MESSAGE = '👋 Hey! Ask me anything to get started.';
@@ -48,6 +49,12 @@ const readStoredProfile = () => {
     console.warn('Unable to read stored profile:', error);
   }
   return null;
+};
+
+const readStoredTheme = () => {
+  if (typeof window === 'undefined') return 'classic';
+  const stored = window.localStorage.getItem(STORAGE_KEYS.theme);
+  return stored === 'vibrant' ? 'vibrant' : 'classic';
 };
 
 const readStoredValue = (key) => {
@@ -117,6 +124,7 @@ const App = () => {
   const [pickerSelection, setPickerSelection] = useState(null);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [streamingSessionId, setStreamingSessionId] = useState(null);
+  const [theme, setTheme] = useState(readStoredTheme);
   const [characterFormState, setCharacterFormState] = useState({
     isOpen: false,
     mode: 'create',
@@ -145,6 +153,15 @@ const App = () => {
   useEffect(() => {
     defaultCharacterRef.current = activeCharacterId;
   }, [activeCharacterId]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.theme, theme);
+    }
+  }, [theme]);
 
   useEffect(() => {
     if (activeCharacterId && !selectableCharacters.some((character) => character.id === activeCharacterId)) {
@@ -783,6 +800,13 @@ const App = () => {
           >
             Manage characters
           </button>
+          <label className="theme-selector">
+            <span>Theme</span>
+            <select value={theme} onChange={(event) => setTheme(event.target.value)}>
+              <option value="classic">Classic</option>
+              <option value="vibrant">Vibrant</option>
+            </select>
+          </label>
         </div>
         <SessionList
           sessions={sessions}
