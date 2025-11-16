@@ -2,15 +2,15 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const { randomUUID } = require('crypto');
-const { runMigrations } = require('./db/migrations');
-const { seedDefaultCharacters } = require('./db/seed');
+const { runMigrations } = require('./migrations');
+const { seedDefaultCharacters } = require('./seed');
 
 const DEFAULT_SESSION_TITLE = 'New chat';
 const CHARACTER_STATUS = {
   DRAFT: 'draft',
   PUBLISHED: 'published',
 };
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(__dirname, '..', 'data');
 const dbPath = path.join(dataDir, 'chat.sqlite');
 
 fs.mkdirSync(dataDir, { recursive: true });

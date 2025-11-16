@@ -31,7 +31,7 @@ module.exports = [
     },
   },
   {
-    files: ['db.js'],
+    files: ['db/index.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'commonjs',
