@@ -33,7 +33,7 @@ const CharacterManager = ({ isOpen, owned = [], onClose, onCreate, onEdit, onPub
         <div className="character-manager__header">
           <div>
             <h2>Character manager</h2>
-            <p>Manage the personas you own. Publish them when they’re ready.</p>
+            <p>Manage your characters you own. Publish them when they’re ready.</p>
           </div>
           <button type="button" className="modal-close-btn" aria-label="Close character manager" onClick={onClose}>
             ×
@@ -41,15 +41,6 @@ const CharacterManager = ({ isOpen, owned = [], onClose, onCreate, onEdit, onPub
         </div>
 
         <section className="character-manager__section">
-          <header className="character-manager__section-header">
-            <div>
-              <h3>My characters</h3>
-              <p>Draft and published personas you own.</p>
-            </div>
-            <button type="button" className="primary" onClick={onCreate}>
-              Create character
-            </button>
-          </header>
           {owned.length ? (
             <div className="character-manager__list">
               {owned.map((character) => (
@@ -77,8 +68,15 @@ const CharacterManager = ({ isOpen, owned = [], onClose, onCreate, onEdit, onPub
             </div>
           ) : (
             <p className="character-manager__empty">No characters yet. Create one to get started.</p>
-          )}
+            )}
         </section>
+        <div className="character-manager__footer">
+          <div className="character-manager__footer-actions">
+            <button type="button" className="primary" onClick={onCreate}>
+              Create character
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

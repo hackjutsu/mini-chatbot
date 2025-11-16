@@ -980,30 +980,10 @@ body {
   color: var(--muted);
 }
 
-.character-manager__header-actions {
+.character-manager__footer {
+  margin-top: 24px;
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.character-manager__section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.character-manager__section-header h3 {
-  margin: 0;
-}
-
-.character-manager__section-header p {
-  margin: 4px 0 0;
-  color: var(--muted);
-}
-
-.character-manager__section-header .primary {
-  box-shadow: none;
+  justify-content: flex-end;
 }
 
 .character-manager__list {
