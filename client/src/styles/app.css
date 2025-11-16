@@ -141,7 +141,7 @@ body {
 .session-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -160,6 +160,8 @@ body {
   background: #fcfdff;
   transition: border-color 120ms ease, transform 150ms ease;
   transform: translateY(0);
+  position: relative;
+  z-index: 0;
 }
 
 .session-item.is-active {
@@ -168,6 +170,11 @@ body {
 
 .session-item:hover {
   transform: translateY(-2px);
+  z-index: 1;
+}
+
+.session-item--menu-open {
+  z-index: 2;
 }
 
 .session-select {
@@ -245,11 +252,10 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: var(--shadow-floating);
   display: flex;
   flex-direction: column;
   padding: 6px;
-  z-index: 40;
+  z-index: 10;
 }
 
 .session-menu-item {

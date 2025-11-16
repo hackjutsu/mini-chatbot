@@ -78,7 +78,7 @@ const CharacterPicker = ({
         <header className="character-picker__header">
           <div>
             <h2>Choose a character</h2>
-            <p>Start with one of your characters or pick from the marketplace.</p>
+            <p> Pick a character from the marketplace, or from your library.</p>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close character picker">
             ×
