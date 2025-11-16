@@ -15,7 +15,6 @@ const formatCharacterPayload = (character) => {
     lastPublishedAt: character.lastPublishedAt || null,
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
-    pinnedAt: character.pinnedAt || null,
   };
 };
 

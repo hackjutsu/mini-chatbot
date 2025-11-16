@@ -68,15 +68,6 @@ db.exec(`
     FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS character_pins (
-    user_id TEXT NOT NULL,
-    character_id TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, character_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
-  );
-
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -182,8 +173,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at ASC);
   CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters(owner_user_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_characters_status ON characters(status, updated_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_character_pins_user ON character_pins(user_id, created_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_character_pins_character ON character_pins(character_id, user_id);
 `);
 
 const statements = {
@@ -363,58 +352,6 @@ const statements = {
      WHERE id = ? AND owner_user_id = ?`
   ),
   deleteCharacter: db.prepare('DELETE FROM characters WHERE id = ? AND owner_user_id = ?'),
-  insertCharacterPin: db.prepare('INSERT OR IGNORE INTO character_pins (user_id, character_id) VALUES (?, ?)'),
-  deleteCharacterPin: db.prepare('DELETE FROM character_pins WHERE user_id = ? AND character_id = ?'),
-  findPinsByUser: db.prepare(
-    `SELECT character_id AS characterId, created_at AS createdAt
-     FROM character_pins
-     WHERE user_id = ?
-     ORDER BY created_at ASC`
-  ),
-  findPinnedCharactersByUser: db.prepare(
-    `SELECT
-      c.id,
-      c.owner_user_id AS ownerUserId,
-      u.username AS ownerUsername,
-      c.name,
-      c.prompt,
-      c.avatar_url AS avatarUrl,
-      c.short_description AS shortDescription,
-      c.status,
-      c.version,
-      c.last_published_at AS lastPublishedAt,
-      c.created_at AS createdAt,
-      c.updated_at AS updatedAt,
-      p.created_at AS pinnedAt
-    FROM character_pins p
-    JOIN characters c ON c.id = p.character_id
-    JOIN users u ON u.id = c.owner_user_id
-    WHERE p.user_id = ?
-    ORDER BY p.created_at ASC`
-  ),
-  findPinnedCharacterForUser: db.prepare(
-    `SELECT
-      c.id,
-      c.owner_user_id AS ownerUserId,
-      u.username AS ownerUsername,
-      c.name,
-      c.prompt,
-      c.avatar_url AS avatarUrl,
-      c.short_description AS shortDescription,
-      c.status,
-      c.version,
-      c.last_published_at AS lastPublishedAt,
-      c.created_at AS createdAt,
-      c.updated_at AS updatedAt,
-      p.created_at AS pinnedAt
-    FROM character_pins p
-    JOIN characters c ON c.id = p.character_id
-    JOIN users u ON u.id = c.owner_user_id
-    WHERE p.user_id = ? AND p.character_id = ?`
-  ),
-  findCharacterPin: db.prepare(
-    'SELECT user_id AS userId, character_id AS characterId FROM character_pins WHERE user_id = ? AND character_id = ?'
-  ),
   attachCharacterToSession: db.prepare(
     'UPDATE sessions SET character_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
   ),
@@ -452,16 +389,6 @@ const ensureDefaultCharactersSeeded = () => {
   });
 };
 
-const seedCharacterPinsForUser = (userId) => {
-  const defaults = statements.findPublishedCharacterIdsByOwner.all(
-    SYSTEM_USER_ID,
-    CHARACTER_STATUS.PUBLISHED
-  );
-  defaults.forEach(({ id }) => {
-    statements.insertCharacterPin.run(userId, id);
-  });
-};
-
 ensureDefaultCharactersSeeded();
 
 const createUser = (username, preferredModel = null) => {
@@ -471,7 +398,6 @@ const createUser = (username, preferredModel = null) => {
   }
   const id = randomUUID();
   statements.createUser.run(id, username.trim(), normalized, preferredModel || null);
-  seedCharacterPinsForUser(id);
   return statements.findUserById.get(id);
 };
 
@@ -540,24 +466,6 @@ const getCharacterById = (characterId) => statements.findCharacterById.get(chara
 
 const getPublishedCharacters = () => statements.findPublishedCharacters.all(CHARACTER_STATUS.PUBLISHED);
 
-const getCharactersPinnedByUser = (userId) => statements.findPinnedCharactersByUser.all(userId);
-
-const getPinnedCharacterForUser = (userId, characterId) =>
-  statements.findPinnedCharacterForUser.get(userId, characterId) || null;
-
-const pinCharacterForUser = (userId, characterId) => {
-  statements.insertCharacterPin.run(userId, characterId);
-  return true;
-};
-
-const unpinCharacterForUser = (userId, characterId) => {
-  const info = statements.deleteCharacterPin.run(userId, characterId);
-  return info.changes > 0;
-};
-
-const isCharacterPinnedByUser = (userId, characterId) =>
-  Boolean(statements.findCharacterPin.get(userId, characterId));
-
 const updateCharacter = (characterId, userId, { name, prompt, avatarUrl = null, shortDescription = null }) => {
   const info = statements.updateCharacter.run(
     name.trim(),
@@ -609,11 +517,6 @@ module.exports = {
   getCharacterOwnedByUser,
   getCharacterById,
   getPublishedCharacters,
-  getCharactersPinnedByUser,
-  getPinnedCharacterForUser,
-  pinCharacterForUser,
-  unpinCharacterForUser,
-  isCharacterPinnedByUser,
   updateCharacter,
   publishCharacter,
   unpublishCharacter,

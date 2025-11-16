@@ -14,8 +14,7 @@ const ensureValidCharacterPayload = ({ name, prompt }) =>
 router.get('/', requireUserFromQuery(), (req, res) => {
   const userId = req.user.id;
   const owned = characterService.listOwned(userId);
-  const pinned = characterService.listPinned(userId);
-  return res.json({ owned, pinned });
+  return res.json({ owned });
 });
 
 router.get('/published', requireUserFromQuery(), (req, res) => {
@@ -80,39 +79,6 @@ router.post('/:characterId/unpublish', requireUserFromBody(), (req, res) => {
     return res.status(404).json({ error: 'Character not found.' });
   }
   return res.json({ character: updated });
-});
-
-router.post('/:characterId/pin', requireUserFromBody(), (req, res) => {
-  const { characterId } = req.params;
-  const userId = req.user.id;
-  try {
-    const character = characterService.pinForUser(characterId, userId);
-    return res.status(201).json({ character });
-  } catch (error) {
-    if (error.code === characterService.CharacterError.NOT_FOUND) {
-      return res.status(404).json({ error: 'Character not found.' });
-    }
-    if (error.code === characterService.CharacterError.NOT_PUBLISHED) {
-      return res.status(400).json({ error: 'Character must be published before pinning.' });
-    }
-    console.error('Failed to pin character:', error);
-    return res.status(500).json({ error: 'Unable to pin character.' });
-  }
-});
-
-router.delete('/:characterId/pin', requireUserFromBodyOrQuery(), (req, res) => {
-  const { characterId } = req.params;
-  const userId = req.user.id;
-  try {
-    characterService.unpinForUser(characterId, userId);
-    return res.status(204).end();
-  } catch (error) {
-    if (error.code === characterService.CharacterError.NOT_PINNED) {
-      return res.status(404).json({ error: 'Character is not pinned.' });
-    }
-    console.error('Failed to unpin character:', error);
-    return res.status(500).json({ error: 'Unable to unpin character.' });
-  }
 });
 
 router.delete('/:characterId', requireUserFromBodyOrQuery(), (req, res) => {

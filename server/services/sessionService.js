@@ -1,8 +1,6 @@
 const {
   createSession,
   getSessionsForUser,
-  getCharactersForUser,
-  getCharactersPinnedByUser,
   getMessagesForSession,
   updateSessionTitle,
   removeSession,
@@ -13,17 +11,11 @@ const characterService = require('./characterService');
 
 const CHARACTER_NOT_FOUND = 'CHARACTER_NOT_FOUND';
 
-const buildCharacterMap = (userId) => {
-  const owned = getCharactersForUser(userId);
-  const pinned = getCharactersPinnedByUser(userId);
-  const merged = [...owned, ...pinned];
-  return new Map(merged.map((character) => [character.id, formatCharacterPayload(character)]));
-};
-
 const listForUser = (userId) => {
-  const characterMap = buildCharacterMap(userId);
   return getSessionsForUser(userId).map((session) => {
-    const character = session.characterId ? characterMap.get(session.characterId) || null : null;
+    const character = session.characterId
+      ? characterService.getCharacterForUser(session.characterId, userId)
+      : null;
     return formatSessionPayload(session, { character });
   });
 };

@@ -11,11 +11,6 @@ const mockDb = {
   removeCharacter: jest.fn(),
   getCharactersForUser: jest.fn(),
   getPublishedCharacters: jest.fn(),
-  getCharactersPinnedByUser: jest.fn(),
-  getPinnedCharacterForUser: jest.fn(),
-  pinCharacterForUser: jest.fn(),
-  unpinCharacterForUser: jest.fn(),
-  isCharacterPinnedByUser: jest.fn(),
   publishCharacter: jest.fn(),
   unpublishCharacter: jest.fn(),
   getCharacterById: jest.fn(),
@@ -62,32 +57,8 @@ describe('characterService', () => {
           lastPublishedAt: null,
           createdAt: '2024-01-01',
           updatedAt: '2024-01-01',
-          pinnedAt: null,
         },
       ]);
-    });
-  });
-
-  describe('listPinned', () => {
-    it('returns pinned characters ordered by pin time', () => {
-      mockDb.getCharactersPinnedByUser.mockReturnValue([
-        {
-          id: 'c2',
-          ownerUserId: 'another',
-          ownerUsername: 'Another',
-          name: 'Chef',
-          prompt: 'Cook things',
-          pinnedAt: '2024-02-02',
-        },
-      ]);
-
-      const result = characterService.listPinned('user-1');
-
-      expect(mockDb.getCharactersPinnedByUser).toHaveBeenCalledWith('user-1');
-      expect(result[0]).toMatchObject({
-        id: 'c2',
-        pinnedAt: '2024-02-02',
-      });
     });
   });
 
@@ -176,24 +147,21 @@ describe('characterService', () => {
       expect(result).toMatchObject({ id: 'c1' });
     });
 
-    it('returns pinned published characters', () => {
+    it('returns published characters', () => {
       mockDb.getCharacterOwnedByUser.mockReturnValue(null);
-      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'another', ownerUsername: 'Another', status: CHARACTER_STATUS.PUBLISHED });
-      mockDb.isCharacterPinnedByUser.mockReturnValue(true);
-      mockDb.getPinnedCharacterForUser.mockReturnValue({
+      mockDb.getCharacterById.mockReturnValue({
         id: 'c2',
         ownerUserId: 'another',
         ownerUsername: 'Another',
         status: CHARACTER_STATUS.PUBLISHED,
-        pinnedAt: '2024-02-02',
       });
 
       const result = characterService.getCharacterForUser('c2', 'user-1');
 
-      expect(result).toMatchObject({ id: 'c2', pinnedAt: '2024-02-02' });
+      expect(result).toMatchObject({ id: 'c2' });
     });
 
-    it('returns null when character not published or pinned', () => {
+    it('returns null when character is not published', () => {
       mockDb.getCharacterOwnedByUser.mockReturnValue(null);
       mockDb.getCharacterById.mockReturnValue({ id: 'c3', ownerUserId: 'another', ownerUsername: 'Another', status: CHARACTER_STATUS.DRAFT });
 
@@ -203,44 +171,4 @@ describe('characterService', () => {
     });
   });
 
-  describe('pinForUser', () => {
-    it('pins a published character', () => {
-      mockDb.getCharacterById.mockReturnValue({ id: 'c2', ownerUserId: 'owner', ownerUsername: 'Owner', status: CHARACTER_STATUS.PUBLISHED });
-      mockDb.getPinnedCharacterForUser.mockReturnValue({
-        id: 'c2',
-        ownerUserId: 'owner',
-        ownerUsername: 'Owner',
-        status: CHARACTER_STATUS.PUBLISHED,
-        pinnedAt: '2024-02-02',
-      });
-
-      const result = characterService.pinForUser('c2', 'user-1');
-
-      expect(mockDb.pinCharacterForUser).toHaveBeenCalledWith('user-1', 'c2');
-      expect(result).toMatchObject({ id: 'c2' });
-    });
-
-    it('throws when character not published for non-owner', () => {
-      mockDb.getCharacterById.mockReturnValue({ id: 'c4', ownerUserId: 'owner', ownerUsername: 'Owner', status: CHARACTER_STATUS.DRAFT });
-
-      expect(() => characterService.pinForUser('c4', 'user-2')).toThrow('Character is not published.');
-    });
-  });
-
-  describe('unpinForUser', () => {
-    it('removes pin when present', () => {
-      mockDb.isCharacterPinnedByUser.mockReturnValue(true);
-
-      const result = characterService.unpinForUser('c5', 'user-1');
-
-      expect(mockDb.unpinCharacterForUser).toHaveBeenCalledWith('user-1', 'c5');
-      expect(result).toBe(true);
-    });
-
-    it('throws when pin missing', () => {
-      mockDb.isCharacterPinnedByUser.mockReturnValue(false);
-
-      expect(() => characterService.unpinForUser('c5', 'user-1')).toThrow('Character is not pinned.');
-    });
-  });
 });

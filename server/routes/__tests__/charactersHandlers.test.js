@@ -1,21 +1,11 @@
-const CharacterError = {
-  NOT_FOUND: 'CHARACTER_NOT_FOUND',
-  NOT_PUBLISHED: 'CHARACTER_NOT_PUBLISHED',
-  NOT_PINNED: 'CHARACTER_NOT_PINNED',
-};
-
 const mockCharacterService = {
-  CharacterError,
   listOwned: jest.fn(),
-  listPinned: jest.fn(),
   listPublished: jest.fn(),
   createForUser: jest.fn(),
   updateForUser: jest.fn(),
   removeForUser: jest.fn(),
   publishForUser: jest.fn(),
   unpublishForUser: jest.fn(),
-  pinForUser: jest.fn(),
-  unpinForUser: jest.fn(),
 };
 
 jest.mock('../../services/characterService', () => mockCharacterService);
@@ -54,16 +44,15 @@ describe('characters router handlers', () => {
     jest.clearAllMocks();
   });
 
-  it('returns owned and pinned lists for GET /', () => {
+  it('returns owned lists for GET /', () => {
     const handler = findHandler('get', '/');
     const req = { user: { id: 'user-1' } };
     const res = createRes();
     mockCharacterService.listOwned.mockReturnValue([{ id: 'owned' }]);
-    mockCharacterService.listPinned.mockReturnValue([{ id: 'pinned' }]);
 
     handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ owned: [{ id: 'owned' }], pinned: [{ id: 'pinned' }] });
+    expect(res.json).toHaveBeenCalledWith({ owned: [{ id: 'owned' }] });
   });
 
   it('returns published characters for GET /published', () => {
@@ -120,22 +109,6 @@ describe('characters router handlers', () => {
     expect(res.json).toHaveBeenCalledWith({ character: { id: 'char-1', status: 'published' } });
   });
 
-  it('handles pin errors for POST /:characterId/pin', () => {
-    const handler = findHandler('post', '/:characterId/pin');
-    const req = { user: { id: 'user-1' }, params: { characterId: 'missing' } };
-    const res = createRes();
-    const error = new Error('not found');
-    error.code = CharacterError.NOT_FOUND;
-    mockCharacterService.pinForUser.mockImplementation(() => {
-      throw error;
-    });
-
-    handler(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Character not found.' });
-  });
-
   it('returns 404 when deleting missing character', () => {
     const handler = findHandler('delete', '/:characterId');
     const req = { user: { id: 'user-1' }, params: { characterId: 'missing' } };
@@ -146,17 +119,5 @@ describe('characters router handlers', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'Character not found.' });
-  });
-
-  it('unpins a character for DELETE /:characterId/pin', () => {
-    const handler = findHandler('delete', '/:characterId/pin');
-    const req = { user: { id: 'user-1' }, params: { characterId: 'char-1' } };
-    const res = createRes();
-    mockCharacterService.unpinForUser.mockReturnValue(true);
-
-    handler(req, res);
-
-    expect(mockCharacterService.unpinForUser).toHaveBeenCalledWith('char-1', 'user-1');
-    expect(res.status).toHaveBeenCalledWith(204);
   });
 });

@@ -95,17 +95,6 @@ export const deleteCharacter = (userId, characterId) =>
     body: { userId },
   });
 
-export const pinCharacter = (userId, characterId) =>
-  requireJson(`/api/characters/${characterId}/pin`, {
-    method: 'POST',
-    body: { userId },
-  });
-
-export const unpinCharacter = (userId, characterId) =>
-  requireJson(`/api/characters/${characterId}/pin?${new URLSearchParams({ userId }).toString()}`, {
-    method: 'DELETE',
-  });
-
 export const fetchModels = (userId) =>
   requireJson(`/api/models?${new URLSearchParams({ userId }).toString()}`);
 

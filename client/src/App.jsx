@@ -104,7 +104,7 @@ const App = () => {
   const [sessions, setSessions] = useState([]);
   const [messagesBySession, setMessagesBySession] = useState({});
   const [activeSessionId, setActiveSessionId] = useState(() => readStoredValue(STORAGE_KEYS.activeSession));
-  const [characterLibrary, setCharacterLibrary] = useState({ owned: [], pinned: [] });
+  const [ownedCharacters, setOwnedCharacters] = useState([]);
   const [publishedCharacters, setPublishedCharacters] = useState([]);
   const [activeCharacterId, setActiveCharacterId] = useState(() => readStoredValue(STORAGE_KEYS.activeCharacter));
   const [modelState, setModelState] = useState({ available: [], selected: null, isLoading: false });
@@ -131,7 +131,6 @@ const App = () => {
     error: '',
   });
   const defaultCharacterRef = useRef(activeCharacterId);
-  const ownedCharacters = characterLibrary.owned;
   const selectableCharacters = useMemo(() => {
     const lookup = new Map();
     ownedCharacters.forEach((character) => lookup.set(character.id, { ...character }));
@@ -196,10 +195,7 @@ const App = () => {
     if (!user?.userId) return;
     try {
       const data = await fetchCharacterLibrary(user.userId);
-      setCharacterLibrary({
-        owned: normalizeCharacterOrdering(data.owned || []),
-        pinned: data.pinned || [],
-      });
+      setOwnedCharacters(normalizeCharacterOrdering(data.owned || []));
     } catch (error) {
       console.error('Failed to load character library:', error);
       setGlobalError((prev) => prev || 'Failed to load characters.');
@@ -233,10 +229,7 @@ const App = () => {
         ]);
         if (cancelled) return;
 
-        setCharacterLibrary({
-          owned: normalizeCharacterOrdering(libraryData.owned || []),
-          pinned: libraryData.pinned || [],
-        });
+        setOwnedCharacters(normalizeCharacterOrdering(libraryData.owned || []));
         setPublishedCharacters(publishedData.characters || []);
         setModelState({
           available: modelData.models || [],
@@ -378,7 +371,7 @@ const App = () => {
     setSessions([]);
     setMessagesBySession({});
     setActiveSessionId(null);
-    setCharacterLibrary({ owned: [], pinned: [] });
+    setOwnedCharacters([]);
     setPublishedCharacters([]);
     setActiveCharacterId(null);
     setModelState({ available: [], selected: null, isLoading: false });
