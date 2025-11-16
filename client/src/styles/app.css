@@ -933,6 +933,7 @@ body {
   cursor: pointer;
   transform: translateY(0);
   transition: border-color 120ms ease, transform 150ms ease;
+  border: 1px solid var(--border);
 }
 
 .picker-card.is-selected {
