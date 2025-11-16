@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside.js';
 
 const UserMenu = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
   useClickOutside(menuRef, () => setIsOpen(false));
+  useEffect(() => {
+    setIsOpen(false);
+  }, [user?.id, user?.username]);
 
   if (!user) {
     return null;
