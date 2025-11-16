@@ -4,21 +4,32 @@ const Database = require('better-sqlite3');
 const { randomUUID } = require('crypto');
 
 const DEFAULT_SESSION_TITLE = 'New chat';
+const CHARACTER_STATUS = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+};
+const SYSTEM_USER_ID = '__system_character_owner__';
+const SYSTEM_USERNAME = 'Mini Character Library';
+const SYSTEM_USERNAME_NORMALIZED = '__system_character_owner__';
+
 const DEFAULT_CHARACTERS = [
   {
     name: 'Nova the Explorer',
+    shortDescription: 'Cosmic mapmaker who replies with vivid optimism.',
     prompt:
       'You are Nova, an upbeat astro-cartographer who speaks in vivid imagery about discoveries. Offer practical optimism and sprinkle in cosmic metaphors.',
     avatarUrl: '/avatars/nova.svg',
   },
   {
     name: 'Chef Lumi',
+    shortDescription: 'Tactile culinary mentor with actionable steps.',
     prompt:
       'You are Chef Lumi, a warm culinary mentor who explains ideas through kitchen analogies. Answer with tactile descriptions and actionable steps.',
     avatarUrl: '/avatars/lumi.svg',
   },
   {
     name: 'Professor Willow',
+    shortDescription: 'Thoughtful guide who balances curiosity with rigor.',
     prompt:
       'You are Professor Willow, a thoughtful mentor who balances curiosity with rigor. Guide the user with probing questions and concise wisdom.',
     avatarUrl: '/avatars/willow.svg',
@@ -44,13 +55,26 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS characters (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     prompt TEXT NOT NULL,
     avatar_url TEXT,
+    short_description TEXT,
+    status TEXT NOT NULL DEFAULT '${CHARACTER_STATUS.DRAFT}',
+    version INTEGER NOT NULL DEFAULT 1,
+    last_published_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS character_pins (
+    user_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, character_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -73,9 +97,6 @@ db.exec(`
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
   );
 
-  CREATE INDEX IF NOT EXISTS idx_sessions_user_updated ON sessions(user_id, updated_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at ASC);
-  CREATE INDEX IF NOT EXISTS idx_characters_user ON characters(user_id, updated_at DESC);
 `);
 
 const userTableInfo = db.prepare('PRAGMA table_info(users)').all();
@@ -84,12 +105,84 @@ if (!hasPreferredModelColumn) {
   db.exec('ALTER TABLE users ADD COLUMN preferred_model TEXT');
 }
 
+const characterTableInfo = db.prepare('PRAGMA table_info(characters)').all();
+const requiredCharacterColumns = [
+  'owner_user_id',
+  'short_description',
+  'status',
+  'version',
+  'last_published_at',
+];
+const needsCharacterTableMigration = requiredCharacterColumns.some(
+  (column) => !characterTableInfo.some((existing) => existing.name === column)
+);
+
+if (needsCharacterTableMigration) {
+  db.exec('BEGIN TRANSACTION');
+  db.exec(`
+    CREATE TABLE characters_new (
+      id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      avatar_url TEXT,
+      short_description TEXT,
+      status TEXT NOT NULL DEFAULT '${CHARACTER_STATUS.DRAFT}',
+      version INTEGER NOT NULL DEFAULT 1,
+      last_published_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+  db.exec(`
+    INSERT INTO characters_new (
+      id,
+      owner_user_id,
+      name,
+      prompt,
+      avatar_url,
+      short_description,
+      status,
+      version,
+      last_published_at,
+      created_at,
+      updated_at
+    )
+    SELECT
+      id,
+      user_id AS owner_user_id,
+      name,
+      prompt,
+      avatar_url,
+      NULL AS short_description,
+      '${CHARACTER_STATUS.DRAFT}' AS status,
+      1 AS version,
+      NULL AS last_published_at,
+      created_at,
+      updated_at
+    FROM characters;
+  `);
+  db.exec('DROP TABLE characters');
+  db.exec('ALTER TABLE characters_new RENAME TO characters');
+  db.exec('COMMIT');
+}
+
 const sessionTableInfo = db.prepare('PRAGMA table_info(sessions)').all();
 const hasCharacterColumn = sessionTableInfo.some((column) => column.name === 'character_id');
 if (!hasCharacterColumn) {
   db.exec('ALTER TABLE sessions ADD COLUMN character_id TEXT REFERENCES characters(id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_character ON sessions(character_id)');
 }
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_updated ON sessions(user_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at ASC);
+  CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters(owner_user_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_characters_status ON characters(status, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_character_pins_user ON character_pins(user_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_character_pins_character ON character_pins(character_id, user_id);
+`);
 
 const statements = {
   createUser: db.prepare(
@@ -155,28 +248,139 @@ const statements = {
   touchSession: db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   updateUserModel: db.prepare('UPDATE users SET preferred_model = ? WHERE id = ?'),
   createCharacter: db.prepare(
-    'INSERT INTO characters (id, user_id, name, prompt, avatar_url) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO characters (id, owner_user_id, name, prompt, avatar_url, short_description) VALUES (?, ?, ?, ?, ?, ?)'
   ),
-  findCharactersByUser: db.prepare(
-    `SELECT id, user_id AS userId, name, prompt, avatar_url AS avatarUrl, created_at AS createdAt, updated_at AS updatedAt
-     FROM characters
-     WHERE user_id = ?
-     ORDER BY updated_at DESC`
+  findCharactersByOwner: db.prepare(
+    `SELECT
+      id,
+      owner_user_id AS ownerUserId,
+      name,
+      prompt,
+      avatar_url AS avatarUrl,
+      short_description AS shortDescription,
+      status,
+      version,
+      last_published_at AS lastPublishedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM characters
+    WHERE owner_user_id = ?
+    ORDER BY updated_at DESC`
+  ),
+  findCharacterByOwnerAndName: db.prepare(
+    `SELECT
+      id,
+      owner_user_id AS ownerUserId,
+      name,
+      prompt,
+      avatar_url AS avatarUrl,
+      short_description AS shortDescription,
+      status,
+      version,
+      last_published_at AS lastPublishedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM characters
+    WHERE owner_user_id = ? AND name = ?`
+  ),
+  findPublishedCharacters: db.prepare(
+    `SELECT
+      id,
+      owner_user_id AS ownerUserId,
+      name,
+      prompt,
+      avatar_url AS avatarUrl,
+      short_description AS shortDescription,
+      status,
+      version,
+      last_published_at AS lastPublishedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM characters
+    WHERE status = ?
+    ORDER BY updated_at DESC`
+  ),
+  findPublishedCharacterIdsByOwner: db.prepare(
+    'SELECT id FROM characters WHERE owner_user_id = ? AND status = ? ORDER BY updated_at DESC'
   ),
   findCharacterById: db.prepare(
-    `SELECT id, user_id AS userId, name, prompt, avatar_url AS avatarUrl, created_at AS createdAt, updated_at AS updatedAt
-     FROM characters
-     WHERE id = ?`
+    `SELECT
+      id,
+      owner_user_id AS ownerUserId,
+      name,
+      prompt,
+      avatar_url AS avatarUrl,
+      short_description AS shortDescription,
+      status,
+      version,
+      last_published_at AS lastPublishedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM characters
+    WHERE id = ?`
   ),
   findCharacterByOwnership: db.prepare(
-    `SELECT id, user_id AS userId, name, prompt, avatar_url AS avatarUrl, created_at AS createdAt, updated_at AS updatedAt
-     FROM characters
-     WHERE id = ? AND user_id = ?`
+    `SELECT
+      id,
+      owner_user_id AS ownerUserId,
+      name,
+      prompt,
+      avatar_url AS avatarUrl,
+      short_description AS shortDescription,
+      status,
+      version,
+      last_published_at AS lastPublishedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM characters
+    WHERE id = ? AND owner_user_id = ?`
   ),
   updateCharacter: db.prepare(
-    'UPDATE characters SET name = ?, prompt = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+    `UPDATE characters
+     SET name = ?, prompt = ?, avatar_url = ?, short_description = ?, updated_at = CURRENT_TIMESTAMP, version = version + 1
+     WHERE id = ? AND owner_user_id = ?`
   ),
-  deleteCharacter: db.prepare('DELETE FROM characters WHERE id = ? AND user_id = ?'),
+  publishCharacter: db.prepare(
+    `UPDATE characters
+     SET status = '${CHARACTER_STATUS.PUBLISHED}', last_published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND owner_user_id = ?`
+  ),
+  unpublishCharacter: db.prepare(
+    `UPDATE characters
+     SET status = '${CHARACTER_STATUS.DRAFT}', updated_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND owner_user_id = ?`
+  ),
+  deleteCharacter: db.prepare('DELETE FROM characters WHERE id = ? AND owner_user_id = ?'),
+  insertCharacterPin: db.prepare('INSERT OR IGNORE INTO character_pins (user_id, character_id) VALUES (?, ?)'),
+  deleteCharacterPin: db.prepare('DELETE FROM character_pins WHERE user_id = ? AND character_id = ?'),
+  findPinsByUser: db.prepare(
+    `SELECT character_id AS characterId, created_at AS createdAt
+     FROM character_pins
+     WHERE user_id = ?
+     ORDER BY created_at ASC`
+  ),
+  findPinnedCharactersByUser: db.prepare(
+    `SELECT
+      c.id,
+      c.owner_user_id AS ownerUserId,
+      c.name,
+      c.prompt,
+      c.avatar_url AS avatarUrl,
+      c.short_description AS shortDescription,
+      c.status,
+      c.version,
+      c.last_published_at AS lastPublishedAt,
+      c.created_at AS createdAt,
+      c.updated_at AS updatedAt,
+      p.created_at AS pinnedAt
+    FROM character_pins p
+    JOIN characters c ON c.id = p.character_id
+    WHERE p.user_id = ?
+    ORDER BY p.created_at ASC`
+  ),
+  findCharacterPin: db.prepare(
+    'SELECT user_id AS userId, character_id AS characterId FROM character_pins WHERE user_id = ? AND character_id = ?'
+  ),
   attachCharacterToSession: db.prepare(
     'UPDATE sessions SET character_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
   ),
@@ -184,21 +388,47 @@ const statements = {
 
 const normalizeUsername = (username = '') => username.trim().toLowerCase();
 
-const seedCharactersForUser = (userId) => {
-  const existing = statements.findCharactersByUser.all(userId);
-  if (existing.length > 0) return existing;
+const ensureSystemUserExists = () => {
+  let existing = statements.findUserById.get(SYSTEM_USER_ID);
+  if (existing) {
+    return existing;
+  }
+  statements.createUser.run(SYSTEM_USER_ID, SYSTEM_USERNAME, SYSTEM_USERNAME_NORMALIZED, null);
+  existing = statements.findUserById.get(SYSTEM_USER_ID);
+  return existing;
+};
+
+const ensureDefaultCharactersSeeded = () => {
+  ensureSystemUserExists();
   DEFAULT_CHARACTERS.forEach((character) => {
+    const existing = statements.findCharacterByOwnerAndName.get(SYSTEM_USER_ID, character.name);
+    if (existing) {
+      return;
+    }
     const id = randomUUID();
     statements.createCharacter.run(
       id,
-      userId,
+      SYSTEM_USER_ID,
       character.name,
       character.prompt,
-      character.avatarUrl || null
+      character.avatarUrl || null,
+      character.shortDescription || null
     );
+    statements.publishCharacter.run(id, SYSTEM_USER_ID);
   });
-  return statements.findCharactersByUser.all(userId);
 };
+
+const seedCharacterPinsForUser = (userId) => {
+  const defaults = statements.findPublishedCharacterIdsByOwner.all(
+    SYSTEM_USER_ID,
+    CHARACTER_STATUS.PUBLISHED
+  );
+  defaults.forEach(({ id }) => {
+    statements.insertCharacterPin.run(userId, id);
+  });
+};
+
+ensureDefaultCharactersSeeded();
 
 const createUser = (username, preferredModel = null) => {
   const normalized = normalizeUsername(username);
@@ -207,7 +437,7 @@ const createUser = (username, preferredModel = null) => {
   }
   const id = randomUUID();
   statements.createUser.run(id, username.trim(), normalized, preferredModel || null);
-  seedCharactersForUser(id);
+  seedCharacterPinsForUser(id);
   return statements.findUserById.get(id);
 };
 
@@ -254,27 +484,62 @@ const setUserPreferredModel = (userId, model) => {
   statements.updateUserModel.run(model ?? null, userId);
 };
 
-const createCharacter = (userId, { name, prompt, avatarUrl = null }) => {
+const createCharacter = (userId, { name, prompt, avatarUrl = null, shortDescription = null }) => {
   const id = randomUUID();
-  statements.createCharacter.run(id, userId, name.trim(), prompt.trim(), avatarUrl || null);
+  statements.createCharacter.run(
+    id,
+    userId,
+    name.trim(),
+    prompt.trim(),
+    avatarUrl || null,
+    shortDescription?.trim() || null
+  );
   return statements.findCharacterById.get(id);
 };
 
-const getCharactersForUser = (userId) => statements.findCharactersByUser.all(userId);
+const getCharactersForUser = (userId) => statements.findCharactersByOwner.all(userId);
 
 const getCharacterOwnedByUser = (characterId, userId) =>
   statements.findCharacterByOwnership.get(characterId, userId) || null;
 
 const getCharacterById = (characterId) => statements.findCharacterById.get(characterId) || null;
 
-const updateCharacter = (characterId, userId, { name, prompt, avatarUrl = null }) => {
+const getPublishedCharacters = () => statements.findPublishedCharacters.all(CHARACTER_STATUS.PUBLISHED);
+
+const getCharactersPinnedByUser = (userId) => statements.findPinnedCharactersByUser.all(userId);
+
+const pinCharacterForUser = (userId, characterId) => {
+  statements.insertCharacterPin.run(userId, characterId);
+  return true;
+};
+
+const unpinCharacterForUser = (userId, characterId) => {
+  const info = statements.deleteCharacterPin.run(userId, characterId);
+  return info.changes > 0;
+};
+
+const isCharacterPinnedByUser = (userId, characterId) =>
+  Boolean(statements.findCharacterPin.get(userId, characterId));
+
+const updateCharacter = (characterId, userId, { name, prompt, avatarUrl = null, shortDescription = null }) => {
   const info = statements.updateCharacter.run(
     name.trim(),
     prompt.trim(),
     avatarUrl || null,
+    shortDescription?.trim() || null,
     characterId,
     userId
   );
+  return info.changes > 0 ? getCharacterOwnedByUser(characterId, userId) : null;
+};
+
+const publishCharacter = (characterId, userId) => {
+  const info = statements.publishCharacter.run(characterId, userId);
+  return info.changes > 0 ? getCharacterOwnedByUser(characterId, userId) : null;
+};
+
+const unpublishCharacter = (characterId, userId) => {
+  const info = statements.unpublishCharacter.run(characterId, userId);
   return info.changes > 0 ? getCharacterOwnedByUser(characterId, userId) : null;
 };
 
@@ -290,6 +555,7 @@ const attachCharacterToSession = (sessionId, userId, characterId) => {
 
 module.exports = {
   DEFAULT_SESSION_TITLE,
+  CHARACTER_STATUS,
   createSession,
   createUser,
   getMessagesForSession,
@@ -305,8 +571,14 @@ module.exports = {
   getCharactersForUser,
   getCharacterOwnedByUser,
   getCharacterById,
+  getPublishedCharacters,
+  getCharactersPinnedByUser,
+  pinCharacterForUser,
+  unpinCharacterForUser,
+  isCharacterPinnedByUser,
   updateCharacter,
+  publishCharacter,
+  unpublishCharacter,
   removeCharacter,
   attachCharacterToSession,
-  seedCharactersForUser,
 };
