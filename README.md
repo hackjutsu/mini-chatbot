@@ -44,7 +44,7 @@ A minimal web chat UI with a modern React frontend (Vite, componentized state) b
 
 5. Visit [http://localhost:3000](http://localhost:3000). On first load you’ll be prompted to choose a username (a handle is stored locally). From there you can create/manage sessions and start chatting.
 
-> Quick shortcut: `npm run dev` runs the production build for the React client and boots the Express server in one command.
+> Quick shortcut: `LOG_LEVEL=debug npm run dev` runs the production build for the React client and boots the Express server in one command.
 
 > The SQLite database lives at `data/chat.sqlite` (ignored by git). Delete this file if you want a clean slate. Each user is automatically seeded with three sample characters (complete with avatars under `client/public/avatars/`) the first time they sign in.
 
@@ -52,7 +52,7 @@ A minimal web chat UI with a modern React frontend (Vite, componentized state) b
 
 - Use `npm --prefix client run dev` for a hot-reloading React dev server (it proxies API calls to `localhost:3000`). Run `npm start` separately so the backend is available.
 - Running `npm --prefix client run build` again will refresh the production bundle that Express serves.
-- `npm run dev` is handy when you want to rebuild the client and restart the server without typing two commands.
+- `LOG_LEVEL=debug npm run dev` is handy when you want to rebuild the client and restart the server without typing two commands.
 
 ## Linting & Testing
 
