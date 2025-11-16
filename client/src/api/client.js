@@ -41,8 +41,11 @@ export const createUser = (username) =>
     body: { username },
   });
 
-export const fetchCharacters = (userId) =>
+export const fetchCharacterLibrary = (userId) =>
   requireJson(`/api/characters?${new URLSearchParams({ userId }).toString()}`);
+
+export const fetchPublishedCharacters = (userId) =>
+  requireJson(`/api/characters/published?${new URLSearchParams({ userId }).toString()}`);
 
 const DEFAULT_AVATARS = [
   '/avatars/default.svg',
@@ -74,10 +77,33 @@ export const updateCharacter = (userId, characterId, payload) =>
     body: { userId, ...payload },
   });
 
+export const publishCharacter = (userId, characterId) =>
+  requireJson(`/api/characters/${characterId}/publish`, {
+    method: 'POST',
+    body: { userId },
+  });
+
+export const unpublishCharacter = (userId, characterId) =>
+  requireJson(`/api/characters/${characterId}/unpublish`, {
+    method: 'POST',
+    body: { userId },
+  });
+
 export const deleteCharacter = (userId, characterId) =>
   requireJson(`/api/characters/${characterId}`, {
     method: 'DELETE',
     body: { userId },
+  });
+
+export const pinCharacter = (userId, characterId) =>
+  requireJson(`/api/characters/${characterId}/pin`, {
+    method: 'POST',
+    body: { userId },
+  });
+
+export const unpinCharacter = (userId, characterId) =>
+  requireJson(`/api/characters/${characterId}/pin?${new URLSearchParams({ userId }).toString()}`, {
+    method: 'DELETE',
   });
 
 export const fetchModels = (userId) =>

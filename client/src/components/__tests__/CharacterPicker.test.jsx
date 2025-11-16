@@ -2,19 +2,19 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import CharacterPicker from '../CharacterPicker';
 
 const characters = [
-  { id: 'char-1', name: 'Nova', prompt: 'Explorer', avatarUrl: '/avatars/nova.svg' },
+  { id: 'char-1', name: 'Nova', prompt: 'Explorer', avatarUrl: '/avatars/nova.svg', status: 'published' },
 ];
 
 const defaultProps = {
   isOpen: true,
   characters,
+  pinnedCharacters: characters,
+  ownedCharacters: [],
   selectedCharacterId: null,
   onSelect: vi.fn(),
   onClose: vi.fn(),
   onConfirm: vi.fn(),
-  onCreate: vi.fn(),
-  onEdit: vi.fn(),
-  onDelete: vi.fn(),
+  onManage: vi.fn(),
   isSubmitting: false,
 };
 
@@ -33,13 +33,10 @@ describe('CharacterPicker', () => {
     expect(defaultProps.onConfirm).toHaveBeenCalled();
   });
 
-  it('invokes edit and delete buttons without triggering parent selection', () => {
+  it('surfaces manager CTA', () => {
     render(<CharacterPicker {...defaultProps} />);
 
-    fireEvent.click(screen.getByLabelText(/Edit character/i));
-    expect(defaultProps.onEdit).toHaveBeenCalledWith(characters[0]);
-
-    fireEvent.click(screen.getByLabelText(/Delete character/i));
-    expect(defaultProps.onDelete).toHaveBeenCalledWith(characters[0]);
+    fireEvent.click(screen.getByRole('button', { name: /Open character manager/i }));
+    expect(defaultProps.onManage).toHaveBeenCalled();
   });
 });

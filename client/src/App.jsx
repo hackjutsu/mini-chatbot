@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConversationView from './components/ConversationView.jsx';
 import SessionList from './components/SessionList.jsx';
 import Composer from './components/Composer.jsx';
@@ -6,6 +6,7 @@ import UserMenu from './components/UserMenu.jsx';
 import ModelSelector from './components/ModelSelector.jsx';
 import CharacterPicker from './components/CharacterPicker.jsx';
 import CharacterFormModal from './components/CharacterFormModal.jsx';
+import CharacterManager from './components/CharacterManager.jsx';
 import UsernameModal from './components/UsernameModal.jsx';
 import {
   createCharacter,
@@ -13,15 +14,20 @@ import {
   createUser,
   deleteCharacter,
   deleteSession,
-  fetchCharacters,
+  fetchCharacterLibrary,
+  fetchPublishedCharacters,
   fetchMessages,
   fetchModels,
   fetchSessions,
   lookupUser,
+  pinCharacter,
+  publishCharacter,
   renameSession,
   streamChat,
+  unpinCharacter,
   updateCharacter,
   updateUserModel,
+  unpublishCharacter,
 } from './api/client.js';
 
 const STORAGE_KEYS = {
@@ -83,7 +89,8 @@ const App = () => {
   const [sessions, setSessions] = useState([]);
   const [messagesBySession, setMessagesBySession] = useState({});
   const [activeSessionId, setActiveSessionId] = useState(() => readStoredValue(STORAGE_KEYS.activeSession));
-  const [characters, setCharacters] = useState([]);
+  const [characterLibrary, setCharacterLibrary] = useState({ owned: [], pinned: [] });
+  const [publishedCharacters, setPublishedCharacters] = useState([]);
   const [activeCharacterId, setActiveCharacterId] = useState(() => readStoredValue(STORAGE_KEYS.activeCharacter));
   const [modelState, setModelState] = useState({ available: [], selected: null, isLoading: false });
   const [, setStatus] = useState('Ready');
@@ -102,16 +109,43 @@ const App = () => {
     isSubmitting: false,
     error: '',
   });
+  const [isCharacterManagerOpen, setCharacterManagerOpen] = useState(false);
   const [usernameState, setUsernameState] = useState({
     isOpen: !user,
     isSubmitting: false,
     error: '',
   });
   const defaultCharacterRef = useRef(activeCharacterId);
+  const availableCharacters = useMemo(() => {
+    const lookup = new Map();
+    characterLibrary.pinned.forEach((character) => {
+      lookup.set(character.id, { ...character });
+    });
+    characterLibrary.owned.forEach((character) => {
+      if (!lookup.has(character.id)) {
+        lookup.set(character.id, { ...character });
+      }
+    });
+    return Array.from(lookup.values());
+  }, [characterLibrary]);
+  const pinnedCharacters = characterLibrary.pinned;
+  const ownedCharacters = characterLibrary.owned;
 
   useEffect(() => {
     defaultCharacterRef.current = activeCharacterId;
   }, [activeCharacterId]);
+
+  useEffect(() => {
+    if (activeCharacterId && !availableCharacters.some((character) => character.id === activeCharacterId)) {
+      setActiveCharacterId(null);
+    }
+  }, [activeCharacterId, availableCharacters]);
+
+  useEffect(() => {
+    if (pickerSelection && !availableCharacters.some((character) => character.id === pickerSelection)) {
+      setPickerSelection(null);
+    }
+  }, [pickerSelection, availableCharacters]);
 
   useEffect(() => {
     if (!user) {
@@ -146,6 +180,30 @@ const App = () => {
     }
   }, [activeCharacterId]);
 
+  const refreshCharacterLibrary = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const data = await fetchCharacterLibrary(user.userId);
+      setCharacterLibrary({
+        owned: data.owned || [],
+        pinned: data.pinned || [],
+      });
+    } catch (error) {
+      console.error('Failed to load character library:', error);
+      setGlobalError((prev) => prev || 'Failed to load characters.');
+    }
+  }, [user?.userId]);
+
+  const refreshPublishedCharacters = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const data = await fetchPublishedCharacters(user.userId);
+      setPublishedCharacters(data.characters || []);
+    } catch (error) {
+      console.error('Failed to load published characters:', error);
+    }
+  }, [user?.userId]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -155,14 +213,19 @@ const App = () => {
       setStatus('Loading…');
       setGlobalError('');
       try {
-        const [characterData, modelData, sessionData] = await Promise.all([
-          fetchCharacters(user.userId),
+        const [libraryData, modelData, sessionData, publishedData] = await Promise.all([
+          fetchCharacterLibrary(user.userId),
           fetchModels(user.userId),
           fetchSessions(user.userId),
+          fetchPublishedCharacters(user.userId),
         ]);
         if (cancelled) return;
 
-        setCharacters(characterData.characters || []);
+        setCharacterLibrary({
+          owned: libraryData.owned || [],
+          pinned: libraryData.pinned || [],
+        });
+        setPublishedCharacters(publishedData.characters || []);
         setModelState({
           available: modelData.models || [],
           selected: modelData.selectedModel || null,
@@ -303,11 +366,14 @@ const App = () => {
     setSessions([]);
     setMessagesBySession({});
     setActiveSessionId(null);
-    setCharacters([]);
+    setCharacterLibrary({ owned: [], pinned: [] });
+    setPublishedCharacters([]);
     setActiveCharacterId(null);
     setModelState({ available: [], selected: null, isLoading: false });
     setGlobalError('');
     setPickerOpen(false);
+    setPickerSelection(null);
+    setCharacterManagerOpen(false);
   };
 
   const handleSelectSession = (sessionId) => {
@@ -429,6 +495,24 @@ const App = () => {
     }
   };
 
+  const updateSessionsForCharacter = useCallback((character) => {
+    if (!character) return;
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.characterId === character.id ? { ...session, character } : session
+      )
+    );
+  }, []);
+
+  const clearCharacterFromSessions = useCallback((characterId) => {
+    if (!characterId) return;
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.characterId === characterId ? { ...session, characterId: null, character: null } : session
+      )
+    );
+  }, []);
+
   const openCharacterForm = (mode, character = null) => {
     setCharacterFormState({
       isOpen: true,
@@ -450,22 +534,16 @@ const App = () => {
     try {
       if (characterFormState.mode === 'edit' && characterFormState.initial?.id) {
         const updated = await updateCharacter(user.userId, characterFormState.initial.id, values);
-        setCharacters((prev) =>
-          prev.map((entry) => (entry.id === updated.character.id ? updated.character : entry))
-        );
-        setSessions((prev) =>
-          prev.map((session) =>
-            session.characterId === updated.character.id
-              ? { ...session, character: updated.character }
-              : session
-          )
-        );
+        updateSessionsForCharacter(updated.character);
+        if (activeCharacterId === updated.character.id) {
+          setActiveCharacterId(updated.character.id);
+        }
       } else {
         const created = await createCharacter(user.userId, values);
-        setCharacters((prev) => [created.character, ...prev]);
         setActiveCharacterId(created.character.id);
         setPickerSelection(created.character.id);
       }
+      await refreshCharacterLibrary();
       closeCharacterForm();
     } catch (error) {
       console.error('Unable to persist character:', error);
@@ -486,20 +564,84 @@ const App = () => {
     if (!confirmed) return;
     try {
       await deleteCharacter(user.userId, character.id);
-      setCharacters((prev) => prev.filter((entry) => entry.id !== character.id));
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.characterId === character.id
-            ? { ...session, characterId: null, character: null }
-            : session
-        )
-      );
+      clearCharacterFromSessions(character.id);
       setActiveCharacterId((prev) => (prev === character.id ? null : prev));
       setPickerSelection((prev) => (prev === character.id ? null : prev));
+      await refreshCharacterLibrary();
+      await refreshPublishedCharacters();
     } catch (error) {
       console.error('Unable to delete character:', error);
       setGlobalError(error.message || 'Failed to delete character.');
     }
+  };
+
+  const handlePublishCharacter = async (character) => {
+    if (!user) return;
+    setGlobalError('');
+    try {
+      const updated = await publishCharacter(user.userId, character.id);
+      updateSessionsForCharacter(updated.character);
+      await refreshCharacterLibrary();
+      await refreshPublishedCharacters();
+    } catch (error) {
+      console.error('Unable to publish character:', error);
+      setGlobalError(error.message || 'Failed to publish character.');
+    }
+  };
+
+  const handleUnpublishCharacter = async (character) => {
+    if (!user) return;
+    setGlobalError('');
+    try {
+      const updated = await unpublishCharacter(user.userId, character.id);
+      updateSessionsForCharacter(updated.character);
+      await refreshCharacterLibrary();
+      await refreshPublishedCharacters();
+    } catch (error) {
+      console.error('Unable to unpublish character:', error);
+      setGlobalError(error.message || 'Failed to unpublish character.');
+    }
+  };
+
+  const handlePinCharacter = async (character) => {
+    if (!user) return;
+    setGlobalError('');
+    try {
+      await pinCharacter(user.userId, character.id);
+      await refreshCharacterLibrary();
+    } catch (error) {
+      console.error('Unable to pin character:', error);
+      setGlobalError(error.message || 'Failed to pin character.');
+    }
+  };
+
+  const handleUnpinCharacter = async (character) => {
+    if (!user) return;
+    setGlobalError('');
+    try {
+      await unpinCharacter(user.userId, character.id);
+      if (activeCharacterId === character.id) {
+        setActiveCharacterId(null);
+      }
+      if (pickerSelection === character.id) {
+        setPickerSelection(null);
+      }
+      await refreshCharacterLibrary();
+    } catch (error) {
+      console.error('Unable to unpin character:', error);
+      setGlobalError(error.message || 'Failed to unpin character.');
+    }
+  };
+
+  const openCharacterManager = () => {
+    if (!user) return;
+    setCharacterManagerOpen(true);
+    refreshCharacterLibrary();
+    refreshPublishedCharacters();
+  };
+
+  const closeCharacterManager = () => {
+    setCharacterManagerOpen(false);
   };
 
   const ensureMessagesLoaded = async (sessionId) => {
@@ -646,9 +788,19 @@ const App = () => {
           </a>
           <UserMenu user={user} onLogout={handleLogout} />
         </div>
-        <button type="button" className="new-chat-btn" onClick={openCharacterPicker} disabled={!user}>
-          New chat
-        </button>
+        <div className="session-panel__actions">
+          <button type="button" className="new-chat-btn" onClick={openCharacterPicker} disabled={!user}>
+            New chat
+          </button>
+          <button
+            type="button"
+            className="new-chat-btn secondary"
+            onClick={openCharacterManager}
+            disabled={!user}
+          >
+            Manage characters
+          </button>
+        </div>
         <SessionList
           sessions={sessions}
           activeSessionId={activeSessionId}
@@ -686,15 +838,29 @@ const App = () => {
     </div>
       <CharacterPicker
         isOpen={pickerOpen}
-        characters={characters}
+        characters={availableCharacters}
+        pinnedCharacters={pinnedCharacters}
+        ownedCharacters={ownedCharacters}
         selectedCharacterId={pickerSelection}
         onSelect={setPickerSelection}
         onClose={closeCharacterPicker}
         onConfirm={handleStartConversation}
+        onManage={openCharacterManager}
+        isSubmitting={isStartingChat}
+      />
+      <CharacterManager
+        isOpen={isCharacterManagerOpen}
+        owned={ownedCharacters}
+        pinned={pinnedCharacters}
+        published={publishedCharacters}
+        onClose={closeCharacterManager}
         onCreate={() => openCharacterForm('create')}
         onEdit={handleEditCharacter}
+        onPublish={handlePublishCharacter}
+        onUnpublish={handleUnpublishCharacter}
         onDelete={handleDeleteCharacter}
-        isSubmitting={isStartingChat}
+        onPin={handlePinCharacter}
+        onUnpin={handleUnpinCharacter}
       />
       <CharacterFormModal
         isOpen={characterFormState.isOpen}
