@@ -825,6 +825,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(248, 250, 252, 0.85);
 }
 
 .character-picker__section h3 {
@@ -842,10 +846,8 @@ body {
 }
 
 .character-picker__section--marketplace {
-  padding: 18px;
-  border-radius: 14px;
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(14, 165, 233, 0.08));
-  border: 1px solid rgba(79, 70, 229, 0.2);
+  border-color: rgba(79, 70, 229, 0.25);
 }
 
 .character-picker__section--marketplace .character-picker__section-header h3 {
@@ -1085,13 +1087,19 @@ body {
 
 .character-summary__meta-row {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+}
+
+.character-summary__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
 }
 
 .character-summary__owner {
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   color: var(--muted);
   white-space: nowrap;
 }

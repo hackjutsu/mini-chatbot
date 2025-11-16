@@ -34,6 +34,8 @@ const CharacterCard = ({ character, ownerLabel, isSelected, onSelect }) => {
       </div>
       <div className="character-summary__meta-row">
         <p className="character-summary__meta">{description}</p>
+      </div>
+      <div className="character-summary__footer">
         <span className="character-summary__owner">By {ownerLabel}</span>
       </div>
     </div>
