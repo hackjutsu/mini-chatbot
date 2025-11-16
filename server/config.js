@@ -8,6 +8,7 @@ const resolveRelativeToRoot = (maybeRelativePath) =>
 const PORT = process.env.PORT || 3000;
 const OLLAMA_CHAT_URL = process.env.OLLAMA_CHAT_URL || 'http://localhost:11434/api/chat';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+const CACHE_PROVIDER = process.env.CACHE_PROVIDER || 'memory';
 const DEFAULT_SYSTEM_PROMPT_PATH = path.join(ROOT_DIR, 'prompts', 'system-prompt.md');
 const SYSTEM_PROMPT_PATH = process.env.SYSTEM_PROMPT_PATH
   ? resolveRelativeToRoot(process.env.SYSTEM_PROMPT_PATH)
@@ -46,6 +47,7 @@ module.exports = {
   PORT,
   OLLAMA_CHAT_URL,
   OLLAMA_MODEL,
+  CACHE_PROVIDER,
   SYSTEM_PROMPT,
   SYSTEM_PROMPT_PATH,
   CLIENT_INDEX_PATH,

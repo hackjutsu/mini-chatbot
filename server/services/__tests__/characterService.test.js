@@ -16,13 +16,30 @@ const mockDb = {
   getCharacterById: jest.fn(),
 };
 
+const mockCache = {
+  get: jest.fn(),
+  set: jest.fn(),
+  delete: jest.fn(),
+  wrap: jest.fn((key, ttl, loader) => loader()),
+};
+
 jest.mock('../../../db', () => mockDb);
+jest.mock('../../cache', () => mockCache);
+jest.mock('../../cache/keys', () => ({
+  publishedCharacterKey: (id) => `character:published:${id}`,
+}));
 
 const characterService = require('../characterService');
 
 describe('characterService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCache.get.mockClear();
+    mockCache.set.mockClear();
+    mockCache.delete.mockClear();
+    mockCache.wrap.mockClear();
+    mockCache.get.mockReturnValue(null);
+    mockCache.wrap.mockImplementation((key, ttl, loader) => loader());
   });
 
   describe('listOwned', () => {
@@ -127,6 +144,7 @@ describe('characterService', () => {
       const result = characterService.publishForUser('c1', 'u1');
       expect(mockDb.publishCharacter).toHaveBeenCalledWith('c1', 'u1');
       expect(result).toMatchObject({ id: 'c1', status: 'published' });
+      expect(mockCache.set).toHaveBeenCalledWith('character:published:c1', expect.objectContaining({ id: 'c1' }), expect.any(Number));
     });
 
     it('unpublishes a character for the owner', () => {
@@ -134,6 +152,7 @@ describe('characterService', () => {
       const result = characterService.unpublishForUser('c1', 'u1');
       expect(mockDb.unpublishCharacter).toHaveBeenCalledWith('c1', 'u1');
       expect(result).toMatchObject({ id: 'c1', status: 'draft' });
+      expect(mockCache.delete).toHaveBeenCalledWith('character:published:c1');
     });
   });
 
@@ -159,6 +178,8 @@ describe('characterService', () => {
       const result = characterService.getCharacterForUser('c2', 'user-1');
 
       expect(result).toMatchObject({ id: 'c2' });
+      expect(mockCache.get).toHaveBeenCalledWith('character:published:c2');
+      expect(mockCache.wrap).toHaveBeenCalledWith('character:published:c2', expect.any(Number), expect.any(Function));
     });
 
     it('returns null when character is not published', () => {
@@ -171,4 +192,44 @@ describe('characterService', () => {
     });
   });
 
+  it('invalidates cache when removing a character', () => {
+    mockDb.removeCharacter.mockReturnValue(true);
+    characterService.removeForUser('c42', 'u1');
+    expect(mockCache.delete).toHaveBeenCalledWith('character:published:c42');
+  });
+
+  it('caches update when character remains published', () => {
+    mockDb.updateCharacter.mockReturnValue({
+      id: 'c99',
+      ownerUserId: 'u1',
+      ownerUsername: 'me',
+      name: 'Nova',
+      prompt: 'Bright',
+      status: CHARACTER_STATUS.PUBLISHED,
+    });
+    characterService.updateForUser('c99', 'u1', { name: 'Nova', prompt: 'Bright' });
+    expect(mockCache.set).toHaveBeenCalledWith('character:published:c99', expect.objectContaining({ id: 'c99' }), expect.any(Number));
+  });
+
+  it('invalidates cache when update returns draft', () => {
+    mockDb.updateCharacter.mockReturnValue({
+      id: 'c100',
+      ownerUserId: 'u1',
+      ownerUsername: 'me',
+      name: 'Nova',
+      prompt: 'Bright',
+      status: CHARACTER_STATUS.DRAFT,
+    });
+    characterService.updateForUser('c100', 'u1', { name: 'Nova', prompt: 'Bright' });
+    expect(mockCache.delete).toHaveBeenCalledWith('character:published:c100');
+  });
+
 });
+  it('returns cached character when available', () => {
+    mockCache.get.mockReturnValue({ id: 'cached', status: CHARACTER_STATUS.PUBLISHED });
+    mockDb.getCharacterOwnedByUser.mockReturnValue(null);
+    const result = characterService.getCharacterForUser('cached', 'user-1');
+    expect(result).toEqual({ id: 'cached', status: CHARACTER_STATUS.PUBLISHED });
+    expect(mockDb.getCharacterOwnedByUser).not.toHaveBeenCalled();
+    expect(mockCache.wrap).not.toHaveBeenCalled();
+  });
