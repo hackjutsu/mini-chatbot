@@ -59,7 +59,7 @@ A minimal web chat UI with a modern React frontend (Vite, componentized state) b
 ### Backend
 
 - **Lint**: `npm run lint` (or `npm run lint:all` to lint both backend and frontend).
-- **Tests**: `npm test` runs the Jest suite (services, middleware, route handlers). Tests mock `db.js`/Ollama so no SQLite or network access is required.
+- **Tests**: `npm test` runs the Jest suite (services, middleware, route handlers). Tests mock `db/index.js`/Ollama so no SQLite or network access is required.
 
 ### Frontend
 

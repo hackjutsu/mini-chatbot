@@ -2,40 +2,15 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const { randomUUID } = require('crypto');
+const { runMigrations } = require('./migrations');
+const { seedDefaultCharacters } = require('./seed');
 
 const DEFAULT_SESSION_TITLE = 'New chat';
 const CHARACTER_STATUS = {
   DRAFT: 'draft',
   PUBLISHED: 'published',
 };
-const SYSTEM_USER_ID = '__system_character_owner__';
-const SYSTEM_USERNAME = 'Mini Character Library';
-const SYSTEM_USERNAME_NORMALIZED = '__system_character_owner__';
-
-const DEFAULT_CHARACTERS = [
-  {
-    name: 'Nova the Explorer',
-    shortDescription: 'Cosmic mapmaker who replies with vivid optimism.',
-    prompt:
-      'You are Nova, an upbeat astro-cartographer who speaks in vivid imagery about discoveries. Offer practical optimism and sprinkle in cosmic metaphors.',
-    avatarUrl: '/avatars/nova.svg',
-  },
-  {
-    name: 'Chef Lumi',
-    shortDescription: 'Tactile culinary mentor with actionable steps.',
-    prompt:
-      'You are Chef Lumi, a warm culinary mentor who explains ideas through kitchen analogies. Answer with tactile descriptions and actionable steps.',
-    avatarUrl: '/avatars/lumi.svg',
-  },
-  {
-    name: 'Professor Willow',
-    shortDescription: 'Thoughtful guide who balances curiosity with rigor.',
-    prompt:
-      'You are Professor Willow, a thoughtful mentor who balances curiosity with rigor. Guide the user with probing questions and concise wisdom.',
-    avatarUrl: '/avatars/willow.svg',
-  },
-];
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(__dirname, '..', 'data');
 const dbPath = path.join(dataDir, 'chat.sqlite');
 
 fs.mkdirSync(dataDir, { recursive: true });
@@ -44,136 +19,7 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    username TEXT NOT NULL,
-    username_normalized TEXT NOT NULL UNIQUE,
-    preferred_model TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS characters (
-    id TEXT PRIMARY KEY,
-    owner_user_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    prompt TEXT NOT NULL,
-    avatar_url TEXT,
-    short_description TEXT,
-    status TEXT NOT NULL DEFAULT '${CHARACTER_STATUS.DRAFT}',
-    version INTEGER NOT NULL DEFAULT 1,
-    last_published_at TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    title TEXT NOT NULL DEFAULT '${DEFAULT_SESSION_TITLE}',
-    character_id TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS messages (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-  );
-
-`);
-
-const userTableInfo = db.prepare('PRAGMA table_info(users)').all();
-const hasPreferredModelColumn = userTableInfo.some((column) => column.name === 'preferred_model');
-if (!hasPreferredModelColumn) {
-  db.exec('ALTER TABLE users ADD COLUMN preferred_model TEXT');
-}
-
-const characterTableInfo = db.prepare('PRAGMA table_info(characters)').all();
-const requiredCharacterColumns = [
-  'owner_user_id',
-  'short_description',
-  'status',
-  'version',
-  'last_published_at',
-];
-const needsCharacterTableMigration = requiredCharacterColumns.some(
-  (column) => !characterTableInfo.some((existing) => existing.name === column)
-);
-
-if (needsCharacterTableMigration) {
-  db.exec('PRAGMA foreign_keys = OFF');
-  db.exec('BEGIN TRANSACTION');
-  db.exec(`
-    CREATE TABLE characters_new (
-      id TEXT PRIMARY KEY,
-      owner_user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      prompt TEXT NOT NULL,
-      avatar_url TEXT,
-      short_description TEXT,
-      status TEXT NOT NULL DEFAULT '${CHARACTER_STATUS.DRAFT}',
-      version INTEGER NOT NULL DEFAULT 1,
-      last_published_at TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `);
-  db.exec(`
-    INSERT INTO characters_new (
-      id,
-      owner_user_id,
-      name,
-      prompt,
-      avatar_url,
-      short_description,
-      status,
-      version,
-      last_published_at,
-      created_at,
-      updated_at
-    )
-    SELECT
-      id,
-      user_id AS owner_user_id,
-      name,
-      prompt,
-      avatar_url,
-      NULL AS short_description,
-      '${CHARACTER_STATUS.DRAFT}' AS status,
-      1 AS version,
-      NULL AS last_published_at,
-      created_at,
-      updated_at
-    FROM characters;
-  `);
-  db.exec('DROP TABLE characters');
-  db.exec('ALTER TABLE characters_new RENAME TO characters');
-  db.exec('COMMIT');
-  db.exec('PRAGMA foreign_keys = ON');
-}
-
-const sessionTableInfo = db.prepare('PRAGMA table_info(sessions)').all();
-const hasCharacterColumn = sessionTableInfo.some((column) => column.name === 'character_id');
-if (!hasCharacterColumn) {
-  db.exec('ALTER TABLE sessions ADD COLUMN character_id TEXT REFERENCES characters(id)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_character ON sessions(character_id)');
-}
-
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_sessions_user_updated ON sessions(user_id, updated_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at ASC);
-  CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters(owner_user_id, updated_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_characters_status ON characters(status, updated_at DESC);
-`);
+runMigrations(db, { DEFAULT_SESSION_TITLE, CHARACTER_STATUS });
 
 const statements = {
   createUser: db.prepare(
@@ -357,39 +203,9 @@ const statements = {
   ),
 };
 
+seedDefaultCharacters(statements);
+
 const normalizeUsername = (username = '') => username.trim().toLowerCase();
-
-const ensureSystemUserExists = () => {
-  let existing = statements.findUserById.get(SYSTEM_USER_ID);
-  if (existing) {
-    return existing;
-  }
-  statements.createUser.run(SYSTEM_USER_ID, SYSTEM_USERNAME, SYSTEM_USERNAME_NORMALIZED, null);
-  existing = statements.findUserById.get(SYSTEM_USER_ID);
-  return existing;
-};
-
-const ensureDefaultCharactersSeeded = () => {
-  ensureSystemUserExists();
-  DEFAULT_CHARACTERS.forEach((character) => {
-    const existing = statements.findCharacterByOwnerAndName.get(SYSTEM_USER_ID, character.name);
-    if (existing) {
-      return;
-    }
-    const id = randomUUID();
-    statements.createCharacter.run(
-      id,
-      SYSTEM_USER_ID,
-      character.name,
-      character.prompt,
-      character.avatarUrl || null,
-      character.shortDescription || null
-    );
-    statements.publishCharacter.run(id, SYSTEM_USER_ID);
-  });
-};
-
-ensureDefaultCharactersSeeded();
 
 const createUser = (username, preferredModel = null) => {
   const normalized = normalizeUsername(username);
