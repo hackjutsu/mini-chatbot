@@ -55,4 +55,11 @@ describe('CharacterPicker', () => {
     expect(defaultProps.onConfirm).toHaveBeenCalled();
   });
 
+  it('closes when pressing escape', () => {
+    render(<CharacterPicker {...defaultProps} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
 });

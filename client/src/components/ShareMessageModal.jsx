@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey.js';
 
 const ShareIcon = ({ children }) => (
   <div className="share-option-icon" aria-hidden="true">
@@ -66,16 +67,7 @@ const ShareMessageModal = ({ isOpen, message, conversation, onClose }) => {
     return url.toString();
   }, [conversation, message]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return () => {};
-    const handleKey = (event) => {
-      if (event.key === 'Escape' && isOpen) {
-        onClose?.();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, onClose]);
+  useEscapeKey(() => onClose?.(), isOpen);
 
   if (!isOpen || !message) {
     return null;

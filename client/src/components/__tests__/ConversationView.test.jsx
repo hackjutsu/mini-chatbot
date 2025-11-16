@@ -26,8 +26,8 @@ describe('ConversationView', () => {
 
   it('renders messages and streaming indicator', () => {
     const messages = [
-      { id: 'm1', role: 'user', content: 'Hi' },
-      { id: 'm2', role: 'assistant', content: '', isStreaming: true },
+      { id: 'm1', role: 'user', content: 'Hi', createdAt: '2024-01-01T10:00:00.000Z' },
+      { id: 'm2', role: 'assistant', content: '', isStreaming: true, createdAt: '2024-01-01T10:01:00.000Z' },
     ];
     render(
       <ConversationView
@@ -50,5 +50,43 @@ describe('ConversationView', () => {
       />
     );
     expect(screen.getByText('Failed to load')).toBeInTheDocument();
+  });
+
+  it('renders timestamps for assistant messages when createdAt exists', () => {
+    const createdAt = '2024-01-01T10:30:00.000Z';
+    const formatted = new Date(createdAt).toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    render(
+      <ConversationView
+        conversation={baseConversation}
+        messages={[{ id: 'm1', role: 'assistant', content: 'Timestamp test', createdAt }]}
+        introMessage=""
+      />
+    );
+    expect(screen.getByText(formatted)).toBeInTheDocument();
+  });
+
+  it('does not render timestamps for user messages', () => {
+    const createdAt = '2024-01-01T11:00:00.000Z';
+    const formatted = new Date(createdAt).toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    render(
+      <ConversationView
+        conversation={baseConversation}
+        messages={[{ id: 'm1', role: 'user', content: 'Hello', createdAt }]}
+        introMessage=""
+      />
+    );
+    expect(screen.queryByText(formatted)).toBeNull();
   });
 });

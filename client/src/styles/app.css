@@ -305,7 +305,6 @@ body {
   height: 52px;
   border-radius: 12px;
   object-fit: cover;
-  background: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -370,6 +369,21 @@ body {
 
 .message-body {
   font-size: 0.92rem;
+}
+
+.message-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.message-timestamp {
+  margin-top: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  margin-left: auto;
 }
 
 .message-body pre {
@@ -1064,7 +1078,6 @@ body {
 
 .character-manager__list {
   list-style: none;
-  margin: 16px 0 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

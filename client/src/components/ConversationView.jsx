@@ -3,6 +3,19 @@ import { renderMarkdown } from '../utils/markdown.js';
 import MessageActionBar from './MessageActionBar.jsx';
 import ShareMessageModal from './ShareMessageModal.jsx';
 
+const formatTimestamp = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const CharacterBanner = ({ character }) => {
   if (!character) return null;
   const summary = character.shortDescription?.trim() || null;
@@ -49,6 +62,8 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
   const showActions = isAssistant && hasContent && !message.isStreaming;
   const showIndicator = Boolean(message.isStreaming);
   const indicatorClasses = `thinking-indicator${hasContent ? ' message-think-indicator' : ''}`;
+  const timestampLabel = isAssistant ? formatTimestamp(message.createdAt) : null;
+  const showMetaRow = showActions || timestampLabel;
 
   return (
     <div className={`message ${message.role}${message.isStreaming ? ' is-thinking' : ''}`}>
@@ -61,12 +76,17 @@ const MessageBubble = ({ message, conversationCharacter, onShare }) => {
         ) : (
           message.content
         )}
-        {showActions ? <MessageActionBar message={message} onShare={onShare} /> : null}
         {showIndicator ? (
           <div className={indicatorClasses} aria-label="Generating response">
             <span></span>
             <span></span>
             <span></span>
+          </div>
+        ) : null}
+        {showMetaRow ? (
+          <div className="message-meta-row">
+            {showActions ? <MessageActionBar message={message} onShare={onShare} /> : null}
+            {timestampLabel ? <div className="message-timestamp">{timestampLabel}</div> : null}
           </div>
         ) : null}
       </div>

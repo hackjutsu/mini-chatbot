@@ -1,3 +1,5 @@
+import { useEscapeKey } from '../hooks/useEscapeKey.js';
+
 const StatusBadge = ({ status }) => {
   if (status !== 'draft') return null;
   return <span className="character-status character-status--draft">Draft</span>;
@@ -24,6 +26,8 @@ const CharacterSummary = ({ character }) => {
 };
 
 const CharacterManager = ({ isOpen, owned = [], onClose, onCreate, onEdit, onPublish, onUnpublish, onDelete }) => {
+  useEscapeKey(() => onClose?.(), isOpen);
+
   if (!isOpen) return null;
 
   return (
