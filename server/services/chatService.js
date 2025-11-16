@@ -1,7 +1,7 @@
 const { getCharacterOwnedByUser, getMessagesForSession, addMessage } = require('../../db');
 const { maybeAutoTitleSession } = require('../helpers/sessionTitle');
 const { requestChatStream } = require('./ollamaService');
-const { OLLAMA_MODEL } = require('../config');
+const { OLLAMA_MODEL, SYSTEM_PROMPT } = require('../config');
 
 const buildConversationHistory = ({ sessionId, session, userId }) => {
   let characterPrompt = null;
@@ -57,6 +57,9 @@ const streamChatResponse = async ({ req, res, user, session, content }) => {
   const { characterPrompt, history } = buildConversationHistory({ sessionId, session, userId });
 
   const outgoingMessages = [];
+  if (typeof SYSTEM_PROMPT === 'string' && SYSTEM_PROMPT.length > 0) {
+    outgoingMessages.push({ role: 'system', content: SYSTEM_PROMPT });
+  }
   if (characterPrompt) {
     outgoingMessages.push({ role: 'system', content: characterPrompt });
   }
