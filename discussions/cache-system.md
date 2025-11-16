@@ -5,6 +5,34 @@
 - Introduce a centralized cache layer for data that changes infrequently (published character prompts, future user lookups) so the backend no longer re-queries SQLite for every chat message.
 - Wrap cache access in `server/cache/index.js`, exposing a minimal async API (`get`, `set`, `delete`, `wrap`). The provider is selected via the `CACHE_PROVIDER` env var (defaults to `memory`), so swapping to Redis later just means registering another provider implementation.
 
+## Architecture Diagram
+
+```
+                ┌────────────────────────┐
+   HTTP Routes  │   Services             │
+ (chat/sessions │   characterService,    │
+ characters) ──▶│   chatService, etc.    │
+                └──────────┬─────────────┘
+                           │ cache.get/set/wrap
+                           ▼
+                ┌────────────────────────┐
+                │ Cache Facade           │
+                │ server/cache/index.js  │
+                └──────────┬─────────────┘
+                           │ resolves provider via CACHE_PROVIDER
+              ┌────────────┴────────────┐
+              │                         │
+┌─────────────▼──────────────┐  ┌───────▼───────────────┐
+│ Memory Provider (default)  │  │ Future Provider       │
+│ Map + TTL metadata         │  │ (Redis/Memcache/etc.) │
+└─────────────┬──────────────┘  └────────┬──────────────┘
+              │                            │
+              ▼                            ▼
+        In-process cache         Centralized cache cluster
+```
+
+Services always talk to the cache facade, which selects the configured provider. The memory provider is used locally; production can switch to Redis without changing service code.
+
 ## Message Flow With Cache
 
 ```
