@@ -43,9 +43,17 @@ const CharacterManager = ({
   return (
     <div className="modal-backdrop character-manager" role="dialog" aria-modal="true">
       <div className="modal-panel character-manager__panel">
-        <div className="modal-header">
-          <h2>Character manager</h2>
-          <button type="button" className="modal-close-btn" aria-label="Close character manager" onClick={onClose}>
+        <div className="character-manager__header">
+          <div>
+            <h2>Character manager</h2>
+            <p>Manage and pin personas to use across chats.</p>
+          </div>
+          <button
+            type="button"
+            className="modal-close-btn"
+            aria-label="Close character manager"
+            onClick={onClose}
+          >
             ×
           </button>
         </div>

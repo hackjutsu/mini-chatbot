@@ -50,8 +50,7 @@ const CharacterPicker = ({
       <div className="character-picker__panel">
         <header className="character-picker__header">
           <div>
-            <h2>Choose a character</h2>
-            <p>Start with a persona or keep the default assistant voice.</p>
+            <h2>Pick someone to chat with</h2>
           </div>
           <button
             type="button"
@@ -83,7 +82,7 @@ const CharacterPicker = ({
           </div>
 
           <div className="character-picker__group">
-            <h3>Library</h3>
+            <h3>Pinned 3rd-party characters</h3>
             {pinnedList.length ? (
               <ul className="character-list">
                 {pinnedList.map((character) => (
@@ -147,12 +146,9 @@ const CharacterPicker = ({
           </div>
         </div>
         <footer className="character-picker__footer">
-          <div className="character-picker__hint">
-            <p>Need a new persona or edits? Use the character manager.</p>
-            <button type="button" className="character-picker__secondary" onClick={onManage}>
-              Open character manager
-            </button>
-          </div>
+          <button type="button" className="character-picker__secondary" onClick={onManage}>
+            Open character manager
+          </button>
           <button
             type="button"
             className="character-picker__primary"
