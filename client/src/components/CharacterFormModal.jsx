@@ -35,6 +35,7 @@ const CharacterFormModal = ({
 }) => {
   const [formState, setFormState] = useState(emptyState);
   const [avatarOptions, setAvatarOptions] = useState(presetAvatars);
+  const [fieldErrors, setFieldErrors] = useState({ name: '', shortDescription: '', prompt: '' });
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +47,7 @@ const CharacterFormModal = ({
         avatarUrl: initialValues?.avatarUrl || options[0].url,
       });
       setAvatarOptions(options);
+      setFieldErrors({ name: '', shortDescription: '', prompt: '' });
     }
   }, [initialValues, isOpen]);
 
@@ -54,10 +56,26 @@ const CharacterFormModal = ({
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormState((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    const errors = { name: '', shortDescription: '', prompt: '' };
+    if (!formState.name.trim()) {
+      errors.name = 'Name is required.';
+    }
+    if (!formState.shortDescription.trim()) {
+      errors.shortDescription = 'Short description is required.';
+    }
+    if (!formState.prompt.trim()) {
+      errors.prompt = 'Background is required.';
+    }
+    if (errors.name || errors.shortDescription || errors.prompt) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({ name: '', shortDescription: '', prompt: '' });
     onSubmit({
       name: formState.name.trim(),
       shortDescription: formState.shortDescription.trim(),
@@ -92,6 +110,7 @@ const CharacterFormModal = ({
               disabled={isSubmitting}
               required
             />
+            {fieldErrors.name ? <p className="field-error">{fieldErrors.name}</p> : null}
           </div>
           <div className="modal-field">
             <label htmlFor="character-short-description">Short description</label>
@@ -103,7 +122,11 @@ const CharacterFormModal = ({
               maxLength={120}
               placeholder="One-line summary for discovery"
               disabled={isSubmitting}
+              required
             />
+            {fieldErrors.shortDescription ? (
+              <p className="field-error">{fieldErrors.shortDescription}</p>
+            ) : null}
           </div>
           <div className="modal-field">
             <label htmlFor="character-prompt">Background / persona</label>
@@ -116,6 +139,7 @@ const CharacterFormModal = ({
               disabled={isSubmitting}
               required
             />
+            {fieldErrors.prompt ? <p className="field-error">{fieldErrors.prompt}</p> : null}
           </div>
           <div className="modal-field">
             <label htmlFor="character-prompt">Choose an avatar</label>

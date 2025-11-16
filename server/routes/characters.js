@@ -8,8 +8,13 @@ const characterService = require('../services/characterService');
 
 const router = express.Router();
 
-const ensureValidCharacterPayload = ({ name, prompt }) =>
-  typeof name === 'string' && name.trim().length > 0 && typeof prompt === 'string' && prompt.trim().length > 0;
+const ensureValidCharacterPayload = ({ name, prompt, shortDescription }) =>
+  typeof name === 'string' &&
+  name.trim().length > 0 &&
+  typeof prompt === 'string' &&
+  prompt.trim().length > 0 &&
+  typeof shortDescription === 'string' &&
+  shortDescription.trim().length > 0;
 
 router.get('/', requireUserFromQuery(), (req, res) => {
   const userId = req.user.id;
@@ -24,8 +29,8 @@ router.get('/published', requireUserFromQuery(), (req, res) => {
 
 router.post('/', requireUserFromBody(), (req, res) => {
   const { name, prompt, avatarUrl, shortDescription } = req.body || {};
-  if (!ensureValidCharacterPayload({ name, prompt })) {
-    return res.status(400).json({ error: 'userId, name, and prompt are required.' });
+  if (!ensureValidCharacterPayload({ name, prompt, shortDescription })) {
+    return res.status(400).json({ error: 'userId, name, shortDescription, and prompt are required.' });
   }
   const userId = req.user.id;
   try {
@@ -45,8 +50,8 @@ router.post('/', requireUserFromBody(), (req, res) => {
 router.patch('/:characterId', requireUserFromBody(), (req, res) => {
   const { characterId } = req.params;
   const { name, prompt, avatarUrl, shortDescription } = req.body || {};
-  if (!ensureValidCharacterPayload({ name, prompt })) {
-    return res.status(400).json({ error: 'userId, name, and prompt are required.' });
+  if (!ensureValidCharacterPayload({ name, prompt, shortDescription })) {
+    return res.status(400).json({ error: 'userId, name, shortDescription, and prompt are required.' });
   }
   const userId = req.user.id;
   const updated = characterService.updateForUser(characterId, userId, {
