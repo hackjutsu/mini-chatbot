@@ -2,6 +2,8 @@
    <img src="./client/public/icon_rectangle.png" alt="Mini Chatbot logo" width="150" />
 </p>
 
+✏️ [From Vibing to Engineering: A Case Study of Building a Character Chatbot](https://medium.com/@cosmo.lepton/from-vibing-to-engineering-a-case-study-of-building-a-character-chatbot-80ec4cd57406)
+
 **Mini** is a character chatbot powered by your favorite local LLMs. It uses a [React](https://react.dev/) frontend, an [Express.js](https://expressjs.com/) backend, and an [Ollama](https://ollama.com/)-based LLM facade. As its name suggests, it supports a minimal feature set designed to be extended for more complex use cases later on
 
 - character marketplace
