@@ -2,14 +2,23 @@
    <img src="./client/public/icon_rectangle.png" alt="Mini Chatbot logo" width="150" />
 </p>
 
-**Mini** is a character chatbot powered by your favorite local LLMs. It uses a React frontend, an Express backend, and an Ollama-based LLM facade. As its name suggests, it supports a minimal feature set designed to be extended for more complex use cases later on
+**Mini** is a character chatbot powered by your favorite local LLMs. It uses a [React](https://react.dev/) frontend, an [Express.js](https://expressjs.com/) backend, and an [Ollama](https://ollama.com/)-based LLM facade. As its name suggests, it supports a minimal feature set designed to be extended for more complex use cases later on
 
 - character marketplace
-- conversation session management
+- conversation session
 - message sharing
 - user management
 
-![](./discussions/character-system-ui.png)
+![](./screenshots/main_ui.png)
+
+| Create Character     |  Manage Characters    |
+| :-------------:| :-----:|
+|![Create Character](./screenshots/character_creation.png)|![Manage Characters](./screenshots/character_management.png)|
+
+|      Pick a character to start chatting         |  Share Message |
+| :-------------:| :-----:|
+| ![Pick a character](./screenshots/character_start_chat.png) | ![Share Message](./screenshots/share_ui.png) | 
+
 
 
 ## Prerequisites
