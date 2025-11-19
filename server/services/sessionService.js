@@ -7,6 +7,7 @@ const {
   getSessionOwnedByUser,
 } = require('../../db');
 const { formatCharacterPayload, formatSessionPayload } = require('../helpers/payloads');
+const { normalizeTimestamp } = require('../helpers/dates');
 const characterService = require('./characterService');
 const logger = require('../logger');
 
@@ -54,7 +55,7 @@ const getTranscriptForSession = (session, userId) => {
     id: message.id,
     role: message.role,
     content: message.content,
-    createdAt: message.createdAt,
+    createdAt: normalizeTimestamp(message.createdAt),
   }));
   return {
     session: formatSessionPayload(session, { messageCount: messages.length, character }),

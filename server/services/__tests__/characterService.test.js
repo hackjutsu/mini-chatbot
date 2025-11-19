@@ -60,8 +60,8 @@ describe('characterService', () => {
           name: 'Nova',
           prompt: 'Be bright',
           avatarUrl: '/nova.svg',
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
+          createdAt: '2024-01-01 10:00:00',
+          updatedAt: '2024-01-01 11:00:00',
         },
       ]);
 
@@ -80,8 +80,8 @@ describe('characterService', () => {
           status: null,
           version: null,
           lastPublishedAt: null,
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00.000Z',
+          updatedAt: '2024-01-01T11:00:00.000Z',
         },
       ]);
     });
@@ -107,8 +107,8 @@ describe('characterService', () => {
         name: 'Chef',
         prompt: 'Cook things',
         avatarUrl: null,
-        createdAt: '2024-02-02',
-        updatedAt: '2024-02-02',
+        createdAt: '2024-02-02 05:00:00',
+        updatedAt: '2024-02-02 05:05:00',
       });
 
       const result = characterService.createForUser('u1', { name: 'Chef', prompt: 'Cook things' });
@@ -127,8 +127,8 @@ describe('characterService', () => {
         name: 'Updated',
         prompt: 'New prompt',
         avatarUrl: '/new.svg',
-        createdAt: '2024-01-01',
-        updatedAt: '2024-03-01',
+        createdAt: '2024-01-01 10:00:00',
+        updatedAt: '2024-03-01 09:00:00',
       });
 
       const result = characterService.updateForUser('c1', 'u1', {

@@ -41,8 +41,8 @@ describe('sessionService', () => {
           name: 'Nova',
           prompt: 'Shine',
           avatarUrl: '/nova.svg',
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
+          createdAt: '2024-01-01 10:00:00',
+          updatedAt: '2024-01-01 11:00:00',
         },
       ]);
       mockDb.getCharactersPinnedByUser.mockReturnValue([]);
@@ -52,8 +52,8 @@ describe('sessionService', () => {
           userId: 'user-1',
           title: '',
           characterId: 'char-1',
-          createdAt: '2024-02-01',
-          updatedAt: '2024-02-01',
+          createdAt: '2024-02-01 09:00:00',
+          updatedAt: '2024-02-01 10:00:00',
           messageCount: 3,
         },
       ]);
@@ -69,8 +69,8 @@ describe('sessionService', () => {
         {
           id: 'sess-1',
           title: 'New chat',
-          createdAt: '2024-02-01',
-          updatedAt: '2024-02-01',
+          createdAt: '2024-02-01T09:00:00.000Z',
+          updatedAt: '2024-02-01T10:00:00.000Z',
           messageCount: 3,
           characterId: 'char-1',
           character: expect.objectContaining({
@@ -98,15 +98,15 @@ describe('sessionService', () => {
         name: 'Nova',
         prompt: 'Shine',
         avatarUrl: '/nova.svg',
-        createdAt: '2024-01-01',
-        updatedAt: '2024-01-01',
+        createdAt: '2024-01-01 10:00:00',
+        updatedAt: '2024-01-01 11:00:00',
       });
       mockDb.createSession.mockReturnValue({
         id: 'sess-1',
         title: 'Greetings',
         characterId: 'char-1',
-        createdAt: '2024-02-01',
-        updatedAt: '2024-02-01',
+        createdAt: '2024-02-01 09:10:00',
+        updatedAt: '2024-02-01 09:15:00',
       });
 
       const result = sessionService.createForUser('user-1', { title: 'Greetings', characterId: 'char-1' });
@@ -115,8 +115,8 @@ describe('sessionService', () => {
       expect(result).toEqual({
         id: 'sess-1',
         title: 'Greetings',
-        createdAt: '2024-02-01',
-        updatedAt: '2024-02-01',
+        createdAt: '2024-02-01T09:10:00.000Z',
+        updatedAt: '2024-02-01T09:15:00.000Z',
         messageCount: 0,
         characterId: 'char-1',
         character: expect.objectContaining({ id: 'char-1', name: 'Nova' }),
@@ -128,8 +128,8 @@ describe('sessionService', () => {
         id: 'sess-2',
         title: '',
         characterId: null,
-        createdAt: '2024-03-01',
-        updatedAt: '2024-03-01',
+        createdAt: '2024-03-01 05:00:00',
+        updatedAt: '2024-03-01 05:00:00',
       });
 
       const result = sessionService.createForUser('user-1', { title: '', characterId: null });
@@ -147,8 +147,8 @@ describe('sessionService', () => {
         prompt: 'Shine',
       });
       mockDb.getMessagesForSession.mockReturnValue([
-        { id: 'm1', role: 'user', content: 'Hello', createdAt: '2024-04-01' },
-        { id: 'm2', role: 'assistant', content: 'Hi!', createdAt: '2024-04-01' },
+        { id: 'm1', role: 'user', content: 'Hello', createdAt: '2024-04-01 08:00:00' },
+        { id: 'm2', role: 'assistant', content: 'Hi!', createdAt: '2024-04-01 08:01:00' },
       ]);
 
       const payload = sessionService.getTranscriptForSession(
@@ -164,6 +164,8 @@ describe('sessionService', () => {
 
       expect(payload.session.character).toMatchObject({ id: 'char-1' });
       expect(payload.messages).toHaveLength(2);
+      expect(payload.messages[0].createdAt).toBe('2024-04-01T08:00:00.000Z');
+      expect(payload.messages[1].createdAt).toBe('2024-04-01T08:01:00.000Z');
     });
   });
 
@@ -181,8 +183,8 @@ describe('sessionService', () => {
         id: 'sess-1',
         title: 'Updated',
         characterId: null,
-        createdAt: '2024-02-01',
-        updatedAt: '2024-02-02',
+        createdAt: '2024-02-01 10:00:00',
+        updatedAt: '2024-02-02 12:00:00',
       });
       mockCharacterService.getCharacterForUser.mockReturnValue(null);
 

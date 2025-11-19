@@ -1,4 +1,5 @@
 const { DEFAULT_SESSION_TITLE } = require('../../db');
+const { normalizeTimestamp } = require('./dates');
 
 const formatCharacterPayload = (character) => {
   if (!character) return null;
@@ -12,9 +13,9 @@ const formatCharacterPayload = (character) => {
     shortDescription: character.shortDescription || null,
     status: character.status || null,
     version: typeof character.version === 'number' ? character.version : null,
-    lastPublishedAt: character.lastPublishedAt || null,
-    createdAt: character.createdAt,
-    updatedAt: character.updatedAt,
+    lastPublishedAt: normalizeTimestamp(character.lastPublishedAt),
+    createdAt: normalizeTimestamp(character.createdAt),
+    updatedAt: normalizeTimestamp(character.updatedAt),
   };
 };
 
@@ -24,8 +25,8 @@ const formatSessionPayload = (session, overrides = {}) => {
   return {
     id: session.id,
     title: session.title || DEFAULT_SESSION_TITLE,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
+    createdAt: normalizeTimestamp(session.createdAt),
+    updatedAt: normalizeTimestamp(session.updatedAt),
     messageCount:
       typeof session.messageCount === 'number'
         ? session.messageCount
