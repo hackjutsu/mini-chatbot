@@ -21,12 +21,16 @@
 | :-------------:| :-----:|
 | ![Pick a character](./screenshots/character_start_chat.png) | ![Share Message](./screenshots/share_ui.png) | 
 
+## Landing Page
+
+A static marketing page that highlights the Mini experience lives under [`docs/index.html`](docs/index.html) so it can be published directly to GitHub Pages. It reuses the screenshots above plus `client/public` branding assets to describe personas, chat sessions, and the local-first stack.
+
 
 
 ## Prerequisites
 
 - [Node.js 18+](https://nodejs.org/)
-- [Ollama](https://ollama.ai/) with `ollama serve` running locally
+- [Ollama](https://ollama.ai/) with `ollama serve` running locally or `brew services start ollama` to run it in the background
 - LLM models pulled locally, e.g. `ollama pull qwen2.5`
 
 ## Getting Started
@@ -48,6 +52,8 @@
 
    ```bash
    ollama serve
+   # or to run in the background
+   brew services start ollama
    ```
 
 4. Start the web server:
