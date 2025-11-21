@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mini is a local-first character chatbot with a React frontend, Express backend, and Ollama-powered LLM proxy."
+    />
+    <title>Mini · Local Character Chatbot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="canvas">
+      <main class="hero-card">
+        <section class="hero">
+          <div class="hero-copy">
+            <div class="hero-brandline">
+              <img class="brand" src="assets/logo.png" alt="Mini logo" />
+              <p class="eyebrow">Local character chatbot</p>
+            </div>
+            <h1>Spin up characters, chat privately, on your laptop.</h1>
+            <p class="hero-lede">
+              Mini is a tiny, fast, local AI chatbot that feels surprisingly alive. Switch personas, explore ideas,
+              and build your own characters — all running privately on your own machine.
+            </p>
+            <div class="hero-actions">
+              <a class="btn primary" href="https://github.com/hackjutsu/mini-chatbot" target="_blank" rel="noreferrer">
+                ⭐ Star on GitHub
+              </a>
+              <a
+                class="btn secondary"
+                href="https://medium.com/@cosmo.lepton/from-vibing-to-engineering-a-case-study-of-building-a-character-chatbot-80ec4cd57406"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Read the story
+              </a>
+            </div>
+            <ul class="hero-facts">
+              <li><strong>Fast and private:</strong> runs entirely on your device.</li>
+              <li><strong>Fully customizable:</strong> create and refine any character.</li>
+              <li><strong>Built to grow:</strong> lightweight now, extensible later.</li>
+            </ul>
+          </div>
+          <div class="carousel" aria-label="Mini interface gallery">
+            <div class="carousel-track" data-active-index="0">
+              <figure class="carousel-slide is-active" data-index="0">
+                <img src="assets/hero.png" alt="Screenshot of Mini chat session" />
+                <figcaption>Everything renders locally—no hosted dependency.</figcaption>
+              </figure>
+              <figure class="carousel-slide" data-index="1">
+                <img src="assets/character.png" alt="Character creation interface" />
+                <figcaption>Craft persona prompts, avatars, and archetypes.</figcaption>
+              </figure>
+              <figure class="carousel-slide" data-index="2">
+                <img src="assets/manage.png" alt="Character management screen" />
+                <figcaption>Organize your characters in one panel.</figcaption>
+              </figure>
+              <figure class="carousel-slide" data-index="3">
+                <img src="assets/share.png" alt="Share message dialog" />
+                <figcaption>Turn replies into beautiful share cards.</figcaption>
+              </figure>
+            </div>
+            <div class="carousel-controls">
+              <button class="carousel-btn" type="button" data-direction="prev" aria-label="Previous screenshot">
+                ‹
+              </button>
+              <div class="carousel-dots" role="tablist">
+                <button class="dot is-active" type="button" data-index="0" aria-label="View screenshot 1"></button>
+                <button class="dot" type="button" data-index="1" aria-label="View screenshot 2"></button>
+                <button class="dot" type="button" data-index="2" aria-label="View screenshot 3"></button>
+                <button class="dot" type="button" data-index="3" aria-label="View screenshot 4"></button>
+              </div>
+              <button class="carousel-btn" type="button" data-direction="next" aria-label="Next screenshot">
+                ›
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
