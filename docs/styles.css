@@ -123,6 +123,12 @@ a {
   transition: transform 120ms ease;
 }
 
+.btn svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
 .btn.primary {
   background: linear-gradient(135deg, #4f6cff, #3858ff);
   color: #fff;
