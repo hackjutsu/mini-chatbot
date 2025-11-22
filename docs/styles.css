@@ -7,6 +7,7 @@
   --accent: #4760ff;
   --accent-dark: #3741a0;
   --shadow: 0 24px 80px rgba(27, 34, 89, 0.18);
+  --radius-shared: 20px;
 }
 
 *,
@@ -45,8 +46,8 @@ a {
 .hero-card {
   width: min(1200px, 100%);
   background: linear-gradient(135deg, #ffffff 0%, #f5f6ff 70%);
-  border-radius: 48px;
-  padding: clamp(32px, 6vw, 72px);
+  border-radius: var(--radius-shared);
+  padding: clamp(24px, 4vw, 48px) clamp(28px, 6vw, 72px);
   box-shadow: var(--shadow);
 }
 
@@ -74,7 +75,7 @@ a {
 .brand {
   width: 88px;
   height: auto;
-  border-radius: 18px;
+  border-radius: 0;
   background: transparent;
 }
 
@@ -114,7 +115,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 12px 22px;
   border: 1px solid transparent;
   font-weight: 600;
@@ -171,8 +172,13 @@ a {
 }
 
 .carousel {
+  background: #fff;
+  border-radius: var(--radius-shared);
+  padding: clamp(24px, 3vw, 32px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;
+  gap: 28px;
   width: 100%;
 }
 
@@ -190,7 +196,7 @@ a {
 .carousel-slide img {
   width: 100%;
   height: auto;
-  border-radius: 28px;
+  border-radius: var(--radius-shared);
 }
 
 .carousel-slide figcaption {
@@ -214,7 +220,7 @@ a {
 .carousel-btn {
   width: 50px;
   height: 50px;
-  border-radius: 18px;
+  border-radius: var(--radius-shared);
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #f4f5ff;
   font-size: 1.4rem;
@@ -279,7 +285,7 @@ a {
   }
 
   .hero-card {
-    border-radius: 40px;
+    border-radius: var(--radius-shared);
   }
 
   .carousel {
