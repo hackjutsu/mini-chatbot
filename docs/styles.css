@@ -149,9 +149,8 @@ a {
 }
 
 .hero-facts li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  position: relative;
+  padding-left: 18px;
 }
 
 .hero-facts li::before {
@@ -160,7 +159,9 @@ a {
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
-  margin-top: 7px;
+  position: absolute;
+  left: 0;
+  top: 8px;
 }
 
 .carousel {
@@ -298,12 +299,13 @@ a {
   }
 
   .carousel-controls {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    gap: 12px;
   }
 
   .carousel-btn {
-    width: 100%;
+    width: 42px;
+    height: 42px;
   }
 
   .carousel-dots {
